@@ -24,10 +24,8 @@ getgenv().Settings = {
 
 	["Main Area Settings"] = {
 		FarmArea = false,
-		PurchaseUpgrades = true,
+		PurchaseUpgrades =false,
 	},
-
-	[[ Created by System Exodus // Jxnt ]]
 }
 
 local Players = game:GetService("Players")
