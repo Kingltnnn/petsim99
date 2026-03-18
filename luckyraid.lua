@@ -18,8 +18,8 @@ local defaultConfig = {
         },
     },
     ["Webhook"] = {
-        url = "https://discord.com/api/webhooks/1363821620543750306/wPH_vK0XX1S9h4A-jAKLxJOglYNjFtGrSm9ZyOZIct9v0vaFEa-3TrGQDWbq_V8g7G7K",
-        ["Discord Id to ping"] = {"419369142873882627"},
+        url = "",
+        ["Discord Id to ping"] = {""},
     },
 
     ["Hatch Starter Pets"] = false,
