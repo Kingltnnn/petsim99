@@ -89,7 +89,10 @@ function FarmUI.new(Config)
 	Self.Player = game:GetService("Players").LocalPlayer
 	Self.GuiName = Config.Name or "PiraScreenGui"
 	Self.Elements = {}
-	Self.Parent = Self.Player:WaitForChild("PlayerGui")
+    
+	-- Dùng CoreGui để UI không bị xóa khi script clear giao diện chống lag
+	local CoreGui = game:GetService("CoreGui")
+	Self.Parent = CoreGui
 
 	local ScreenGui = Instance.new("ScreenGui")
 	ScreenGui.Name = Self.GuiName
