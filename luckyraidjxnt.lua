@@ -162,7 +162,7 @@ local Network = require(NLibrary.Client.Network)
 local PlayerSave = require(NLibrary.Client.Save) 
 
 local RaidCmds = require(NLibrary.Client.RaidCmds)
-local RaidInstance = require(NLibrary.Client.RaidCmds.RaidInstance)
+local RaidInstance = require(NLibrary.Client.RaidCmds.ClientRaidInstance)
 local EventUpgradeCmds = require(NLibrary.Client.EventUpgradeCmds)
 local EventUpgrades = require(NLibrary.Directory.EventUpgrades)
 local Items = require(NLibrary.Items)
