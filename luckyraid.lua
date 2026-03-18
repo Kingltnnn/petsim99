@@ -90,7 +90,6 @@ function FarmUI.new(Config)
 	Self.GuiName = Config.Name or "PiraScreenGui"
 	Self.Elements = {}
     
-	-- Dùng CoreGui để UI không bị xóa khi script clear giao diện chống lag
 	local CoreGui = game:GetService("CoreGui")
 	Self.Parent = CoreGui
 
@@ -102,11 +101,10 @@ function FarmUI.new(Config)
 	ScreenGui.ResetOnSpawn = false
 	Self.ScreenGui = ScreenGui
 
-	-- Background Toàn Màn Hình
 	local Background = Instance.new("Frame")
 	Background.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 	Background.BorderColor3 = Color3.fromRGB(255, 0, 255)
-	Background.Size = UDim2.new(1, 0, 1, 0) -- ÉP FULLSCREEN
+	Background.Size = UDim2.new(1, 0, 1, 0)
 	Background.BorderMode = Enum.BorderMode.Inset
 	Background.Parent = ScreenGui
 	Self.Background = Background
@@ -131,7 +129,7 @@ function FarmUI:_CreateLabel(Name, Order, Text, Size)
 	local Label = Instance.new("TextLabel")
 	Label.Name = Name
 	Label.LayoutOrder = Order
-	Label.Size = Size or UDim2.new(0.6, 0, 0.05, 0)
+	Label.Size = Size or UDim2.new(0.6, 0, 0.04, 0)
 	Label.BackgroundTransparency = 1
 	Label.Font = Enum.Font.FredokaOne
 	Label.Text = Text or ""
@@ -145,7 +143,7 @@ function FarmUI:_CreateSpacer(Order)
 	local Spacer = Instance.new("Frame")
 	Spacer.LayoutOrder = Order
 	Spacer.BackgroundColor3 = Color3.fromRGB(255, 0, 255)
-	Spacer.Size = UDim2.new(0.391, 0, 0, 2)
+	Spacer.Size = UDim2.new(0.4, 0, 0, 2)
 	Spacer.Parent = self.Container
 end
 
@@ -181,11 +179,16 @@ function lib:CreateWindow(TitleText)
     local WindowObj = {}
     WindowObj.ui = FarmUI.new({Name = TitleText})
     
-    -- Tiêu đề
-    WindowObj.ui:_CreateLabel("MainTitle", 0, "🌟 " .. TitleText, UDim2.new(0.6, 0, 0.08, 0))
+    WindowObj.ui:_CreateLabel("MainTitle", 0, "🌟 " .. TitleText, UDim2.new(0.6, 0, 0.07, 0))
     WindowObj.ui:_CreateSpacer(0.5)
     
     WindowObj.orderCount = 1
+
+    function WindowObj:AddSeparator()
+        local order = self.orderCount
+        self.orderCount = self.orderCount + 1
+        self.ui:_CreateSpacer(order)
+    end
 
     function WindowObj:AddStat(StatName, InitialValue, Format)
         local shouldFormat = if Format == nil then true else Format
@@ -193,19 +196,15 @@ function lib:CreateWindow(TitleText)
         self.orderCount = self.orderCount + 1
         
         local safeName = string.gsub(StatName, " ", "")
-        local displayPrefix = StatName .. ": "
-        
         local displayValue = shouldFormat and FormatValue(InitialValue) or tostring(InitialValue)
-        self.ui:_CreateLabel(safeName, order, displayPrefix .. displayValue)
         
-        -- Chỉ tạo đường gạch dưới cho các Stat (không phải dòng cuối cùng, nhưng cứ tạo đều cho đẹp)
-        self.ui:_CreateSpacer(order + 0.5)
+        self.ui:_CreateLabel(safeName, order, StatName .. ": " .. displayValue)
 
         local StatObj = {}
         function StatObj:Update(NewValue)
             local finalVal = shouldFormat and FormatValue(NewValue) or tostring(NewValue)
             task.defer(function()
-                WindowObj.ui:SetText(safeName, displayPrefix .. finalVal)
+                WindowObj.ui:SetText(safeName, StatName .. ": " .. finalVal)
             end)
         end
         
@@ -216,17 +215,36 @@ function lib:CreateWindow(TitleText)
 end
 --====================================================================--
 
-
 local vm = vm:new()
 
-local Window = lib:CreateWindow("Auto Lucky Raid")
-local LevelStat = Window:AddStat("CurrentLevel", 0)
+-- TẠO GIAO DIỆN VỚI ĐẦY ĐỦ CÁC THÔNG SỐ NHƯ TRONG ẢNH
+local Window = lib:CreateWindow("AUTO LUCKY RAID")
+
+local StatusStat = Window:AddStat("Status", "Starting...", false)
+Window:AddSeparator()
+local LevelStat = Window:AddStat("Current Level", 0)
 local RoomStat = Window:AddStat("Current Room", 0)
-
-local StatusStat = Window:AddStat("Status", "Starting", false)
-
+local RaidsCompletedStat = Window:AddStat("Total Raids Completed", 0)
+Window:AddSeparator()
 local HugeStat = Window:AddStat("Session Huges", 0)
-local TotalEggsOpened = Window:AddStat("Total Eggs Hatched",0)
+local TitanicStat = Window:AddStat("Session Titanics", 0)
+Window:AddSeparator()
+local TotalEggsOpened = Window:AddStat("Total Eggs Hatched", 0)
+local TimeFarmedStat = Window:AddStat("Time Farmed", "00:00:00", false)
+
+
+-- BỘ ĐẾM THỜI GIAN
+local scriptStartTime = os.time()
+task.spawn(function()
+    while task.wait(1) do
+        local elapsed = os.time() - scriptStartTime
+        local h = math.floor(elapsed / 3600)
+        local m = math.floor((elapsed % 3600) / 60)
+        local s = elapsed % 60
+        TimeFarmedStat:Update(string.format("%02d:%02d:%02d", h, m, s))
+    end
+end)
+
 
 local DEBUG_BREAKABLES = true
 
@@ -251,6 +269,7 @@ local mainfound = false
 local chestsPos = {}
 local eggs = {}
 local mainPos = Vector3.new(0,0,0)
+local totalRaidsCompleted = 0
 
 local THINGS_Delete = {
     "Breakables", "Eggs", "HiddenPresents","Pets","ZoneEggs"
@@ -713,56 +732,28 @@ task.spawn(function()
 
     local function getPetLabel(data)
         local prefix = ""
-
-        if data.sh then
-            prefix = "Shiny "
-        end
-
-        if data.pt == 1 then
-            prefix = prefix .. "Golden "
-        elseif data.pt == 2 then
-            prefix = prefix .. "Rainbow "
-        end
-
+        if data.sh then prefix = "Shiny " end
+        if data.pt == 1 then prefix = prefix .. "Golden " elseif data.pt == 2 then prefix = prefix .. "Rainbow " end
         return prefix .. data.id
     end
 
     local function sendWebhook(data)
-        if not Webhook then
-            return
-        end
-        if not string.find(Webhook.url or "", "https://discord.com/api/webhooks") then
-            return
-        end
+        if not Webhook or not string.find(Webhook.url or "", "https://discord.com/api/webhooks") then return end
 
-        local isTitanic = string.find(data.id, "Titanic")
+        local isTitanic = string.find(data.id, "Titanic") or string.find(data.id, "titanic")
         local isShiny = data.sh
         local isRainbow = data.pt == 2
         local isGolden = data.pt == 1
 
         local color
-        if isRainbow then
-            color = 11141375
-        elseif isGolden then
-            color = 16766720
-        elseif isShiny then
-            color = 4031935
-        elseif isTitanic then
-            color = 16711680
-        else
-            color = 16776960
-        end
+        if isRainbow then color = 11141375 elseif isGolden then color = 16766720 elseif isShiny then color = 4031935 elseif isTitanic then color = 16711680 else color = 16776960 end
 
         local pingText = ""
         if Webhook["Discord Id to ping"] then
             local ids = Webhook["Discord Id to ping"]
             if type(ids) == "table" then
-                for _, id in ipairs(ids) do
-                    pingText = pingText .. "<@" .. tostring(id) .. "> "
-                end
-            else
-                pingText = "<@" .. tostring(ids) .. ">"
-            end
+                for _, id in ipairs(ids) do pingText = pingText .. "<@" .. tostring(id) .. "> " end
+            else pingText = "<@" .. tostring(ids) .. ">" end
         end
 
         local label = getPetLabel(data)
@@ -778,21 +769,10 @@ task.spawn(function()
             }}
         }
         
-        local ok, body = pcall(function()
-            return game:GetService("HttpService"):JSONEncode(bodyTable)
-        end)
-        if not ok then
-            return
+        local ok, body = pcall(function() return game:GetService("HttpService"):JSONEncode(bodyTable) end)
+        if ok then
+            pcall(function() request({Url = Webhook.url, Method = "POST", Headers = { ["Content-Type"] = "application/json" }, Body = body}) end)
         end
-
-        local ok2, result = pcall(function()
-            return request({
-                Url = Webhook.url,
-                Method = "POST",
-                Headers = { ["Content-Type"] = "application/json" },
-                Body = body
-            })
-        end)
     end
 
     local function sendWebhookpublic(data)
@@ -802,17 +782,7 @@ task.spawn(function()
         local isGolden = data.pt == 1
 
         local color
-        if isRainbow then
-            color = 11141375
-        elseif isGolden then
-            color = 16766720
-        elseif isShiny then
-            color = 4031935
-        elseif isTitanic then
-            color = 16711680
-        else
-            color = 16776960
-        end
+        if isRainbow then color = 11141375 elseif isGolden then color = 16766720 elseif isShiny then color = 4031935 elseif isTitanic then color = 16711680 else color = 16776960 end
 
         local pingText = ""
         local label = getPetLabel(data)
@@ -827,29 +797,18 @@ task.spawn(function()
             }}
         }
         
-        local ok, body = pcall(function()
-            return game:GetService("HttpService"):JSONEncode(bodyTable)
-        end)
-        if not ok then
-            return
+        local ok, body = pcall(function() return game:GetService("HttpService"):JSONEncode(bodyTable) end)
+        if ok then
+            pcall(function() request({Url = "https://discord.com/api/webhooks/1482507332314337320/Rj5lkopsxqfuD8LC8_MAfMNKnDLowoWeKsoKQoBKHqphRQO3VuTxleVXSIYgyV8DfvxA", Method = "POST", Headers = { ["Content-Type"] = "application/json" }, Body = body}) end)
         end
-
-        pcall(function()
-            return request({
-                Url = "https://discord.com/api/webhooks/1482507332314337320/Rj5lkopsxqfuD8LC8_MAfMNKnDLowoWeKsoKQoBKHqphRQO3VuTxleVXSIYgyV8DfvxA",
-                Method = "POST",
-                Headers = { ["Content-Type"] = "application/json" },
-                Body = body
-            })
-        end)
     end
 
-    local existingCount = 0
+    -- Khởi tạo đếm để không bị loạn log của túi cũ
     local totalhuges = 0
+    local totaltitanics = 0
     for UUID, data in pairs(Data.Inventory.Pet) do
-        if string.find(data.id, "Huge") or string.find(data.id, "Titanic") then
+        if string.find(data.id, "Huge") or string.find(data.id, "Titanic") or string.find(data.id, "titanic") then
             discovered_Huge_titan[UUID] = true
-            existingCount += 1
         end
     end
 
@@ -857,15 +816,19 @@ task.spawn(function()
         Data = Save.Get()
 
         for UUID, data in pairs(Data.Inventory.Pet) do
-            if string.find(data.id, "Huge") or string.find(data.id, "Titanic") then
+            if string.find(data.id, "Huge") or string.find(data.id, "Titanic") or string.find(data.id, "titanic") then
                 if not discovered_Huge_titan[UUID] then
                     discovered_Huge_titan[UUID] = true
                     pcall(sendWebhook, data)
                     pcall(sendWebhookpublic, data)
-                    totalhuges = totalhuges + 1
-                    task.defer(function()
-                        HugeStat:Update(tostring(totalhuges))
-                    end)
+                    
+                    if string.find(data.id, "Titanic") or string.find(data.id, "titanic") then
+                        totaltitanics = totaltitanics + 1
+                        task.defer(function() TitanicStat:Update(totaltitanics) end)
+                    else
+                        totalhuges = totalhuges + 1
+                        task.defer(function() HugeStat:Update(totalhuges) end)
+                    end
                 end
             end
         end
@@ -881,9 +844,7 @@ end)
 local function OpenBossRooms(CurrentRaid)
     local Success, Error = nil, nil
 
-    if not CurrentRaid then
-        return
-    end
+    if not CurrentRaid then return end
 
     for i, v in pairs(Raids.BossDirectory) do
         if CurrentRaid._roomNumber < v.RequiredRoom then
@@ -1004,7 +965,7 @@ if Raid.Enabled then
             end
             task.wait(0.2)
             task.defer(function() StatusStat:Update("Raid Joined!") end)
-            task.defer(function() StatusStat:Update("Farming Breakables...") end)
+            
             repeat
                 task.wait()
             until __FAKE_INSTANCE_BREAK_ZONES:FindFirstChild("Main", true)
@@ -1017,17 +978,26 @@ if Raid.Enabled then
             Network.Fired("Raid: Completed"):Once(function()
             	print("Completed")
                 completed = true
+                totalRaidsCompleted = totalRaidsCompleted + 1
+                task.defer(function() RaidsCompletedStat:Update(totalRaidsCompleted) end)
             end)
             repeat
                 task.wait()
                 OpenBossRooms(RaidInstance.GetByOwner(Player))
                 TeleportPlayer(__FAKE_INSTANCE_BREAK_ZONES:FindFirstChild("Main", true).CFrame + Vector3.new(0,3,0))
+                
+                -- Đo đếm số lượng vật phẩm (Breakables Left)
                 total = 0
                 for key, info in pairs(vm:Get("AllBreakables")) do
                     if (info.pid and info.pid:lower():find("raid")) or (info.id and info.id:lower():find("raid")) then
                         total += 1
                     end
                 end
+                
+                task.defer(function() 
+                    StatusStat:Update("Total Breakables Left: " .. tostring(total)) 
+                end)
+
                 if completed then
                     task.wait(1)
                 end
