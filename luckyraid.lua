@@ -219,7 +219,7 @@ end
 
 local vm = vm:new()
 
-local Window = lib:CreateWindow("Hasty Auto Lucky Raid")
+local Window = lib:CreateWindow("Auto Lucky Raid")
 local LevelStat = Window:AddStat("CurrentLevel", 0)
 local RoomStat = Window:AddStat("Current Room", 0)
 
