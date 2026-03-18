@@ -62,7 +62,6 @@ if type(Raid["Egg Settings"].MinimumLuckyCoins) ~= "number" then
 	Raid["Egg Settings"].MinimumLuckyCoins = RemoveSuffix(Raid["Egg Settings"].MinimumLuckyCoins)
 end
 
-
 local function load(url, file)
     local path = "Hasty-Utils/" .. file
     local ok, res = pcall(game.HttpGet, game, url)
@@ -76,8 +75,144 @@ local function load(url, file)
 end
 
 local vm = load("https://raw.githubusercontent.com/Paule1248/Open-Source/refs/heads/main/Utils/VariablesManager", "VariablesManager.lua")
-local lib = load("https://raw.githubusercontent.com/Paule1248/Open-Source/refs/heads/main/Utils/Lib%20New", "Lib.lua")
 local utils = load("https://raw.githubusercontent.com/Paule1248/Open-Source/refs/heads/main/Utils/Utils", "Utils.lua")
+
+--====================================================================--
+--//                   PIRA UI (FULLSCREEN MODDED)                  //--
+--====================================================================--
+local FarmUI = {}
+FarmUI.__index = FarmUI
+
+function FarmUI.new(Config)
+	local Self = setmetatable({}, FarmUI)
+	Config = Config or {}
+	Self.Player = game:GetService("Players").LocalPlayer
+	Self.GuiName = Config.Name or "PiraScreenGui"
+	Self.Elements = {}
+	Self.Parent = Self.Player:WaitForChild("PlayerGui")
+
+	local ScreenGui = Instance.new("ScreenGui")
+	ScreenGui.Name = Self.GuiName
+	ScreenGui.IgnoreGuiInset = true
+	ScreenGui.ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets
+	ScreenGui.Parent = Self.Parent
+	ScreenGui.ResetOnSpawn = false
+	Self.ScreenGui = ScreenGui
+
+	-- Background Toàn Màn Hình
+	local Background = Instance.new("Frame")
+	Background.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+	Background.BorderColor3 = Color3.fromRGB(255, 0, 255)
+	Background.Size = UDim2.new(1, 0, 1, 0) -- ÉP FULLSCREEN
+	Background.BorderMode = Enum.BorderMode.Inset
+	Background.Parent = ScreenGui
+	Self.Background = Background
+
+	local Container = Instance.new("Frame")
+	Container.Size = UDim2.new(1, 0, 1, 0)
+	Container.BackgroundTransparency = 1
+	Container.Parent = Background
+	Self.Container = Container
+
+	local Layout = Instance.new("UIListLayout")
+	Layout.Padding = UDim.new(0.015, 0)
+	Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	Layout.VerticalAlignment = Enum.VerticalAlignment.Center
+	Layout.SortOrder = Enum.SortOrder.LayoutOrder
+	Layout.Parent = Container
+
+	return Self
+end
+
+function FarmUI:_CreateLabel(Name, Order, Text, Size)
+	local Label = Instance.new("TextLabel")
+	Label.Name = Name
+	Label.LayoutOrder = Order
+	Label.Size = Size or UDim2.new(0.6, 0, 0.05, 0)
+	Label.BackgroundTransparency = 1
+	Label.Font = Enum.Font.FredokaOne
+	Label.Text = Text or ""
+	Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+	Label.TextScaled = true
+	Label.Parent = self.Container
+	self.Elements[Name] = Label
+end
+
+function FarmUI:_CreateSpacer(Order)
+	local Spacer = Instance.new("Frame")
+	Spacer.LayoutOrder = Order
+	Spacer.BackgroundColor3 = Color3.fromRGB(255, 0, 255)
+	Spacer.Size = UDim2.new(0.391, 0, 0, 2)
+	Spacer.Parent = self.Container
+end
+
+function FarmUI:SetText(Name, Text)
+	local Element = self.Elements[Name]
+	if Element then
+		Element.Text = Text
+	end
+end
+
+local function FormatValue(Value)
+    local n = tonumber(Value)
+    if not n then return tostring(Value) end
+    local suffixes = {"", "k", "M", "B", "T", "QD", "QN", "SX", "SP"}
+    local index = 1
+    local absNumber = math.abs(n)
+    while absNumber >= 1000 and index < #suffixes do
+        absNumber = absNumber / 1000
+        index = index + 1
+    end
+    local sign = n < 0 and "-" or ""
+    local formatted
+    if absNumber >= 1 and index > 1 then
+        formatted = string.format("%.1f", absNumber):gsub("%.0$", "")
+    else
+        formatted = tostring(math.floor(absNumber * 100) / 100)
+    end
+    return sign .. formatted .. suffixes[index]
+end
+
+local lib = {}
+function lib:CreateWindow(TitleText)
+    local WindowObj = {}
+    WindowObj.ui = FarmUI.new({Name = TitleText})
+    
+    -- Tiêu đề
+    WindowObj.ui:_CreateLabel("MainTitle", 0, "🌟 " .. TitleText, UDim2.new(0.6, 0, 0.08, 0))
+    WindowObj.ui:_CreateSpacer(0.5)
+    
+    WindowObj.orderCount = 1
+
+    function WindowObj:AddStat(StatName, InitialValue, Format)
+        local shouldFormat = if Format == nil then true else Format
+        local order = self.orderCount
+        self.orderCount = self.orderCount + 1
+        
+        local safeName = string.gsub(StatName, " ", "")
+        local displayPrefix = StatName .. ": "
+        
+        local displayValue = shouldFormat and FormatValue(InitialValue) or tostring(InitialValue)
+        self.ui:_CreateLabel(safeName, order, displayPrefix .. displayValue)
+        
+        -- Chỉ tạo đường gạch dưới cho các Stat (không phải dòng cuối cùng, nhưng cứ tạo đều cho đẹp)
+        self.ui:_CreateSpacer(order + 0.5)
+
+        local StatObj = {}
+        function StatObj:Update(NewValue)
+            local finalVal = shouldFormat and FormatValue(NewValue) or tostring(NewValue)
+            task.defer(function()
+                WindowObj.ui:SetText(safeName, displayPrefix .. finalVal)
+            end)
+        end
+        
+        return StatObj
+    end
+    
+    return WindowObj
+end
+--====================================================================--
+
 
 local vm = vm:new()
 
@@ -117,12 +252,6 @@ local mainPos = Vector3.new(0,0,0)
 local THINGS_Delete = {
     "Breakables", "Eggs", "HiddenPresents","Pets","ZoneEggs"
 }
-
--- for _, child in ipairs(THINGS:GetChildren()) do
-    -- if table.find(THINGS_Delete, child.Name) then
-        -- child:Destroy()
-    -- end
--- end
 
 Player.PlayerScripts.Scripts.Core["Server Closing"].Enabled = false
 Player.PlayerScripts.Scripts.Core["Idle Tracking"].Enabled = false
@@ -183,16 +312,6 @@ vm:Add("BulkAssignments", {})
 vm:Add("current_zone", nil, "string")
 vm:Add("lastZone", nil, "string")
 vm:Add("LeftOnPurpose", false, "boolean")
-
--- vm:Add("FastFarm", false, "boolean")
--- vm:Add("FastFarm2", false)
--- vm:Add("AutoClick", false)
--- vm:Add("AutoUseUltimate", false)
--- vm:Add("AutoEnterEvent", false)
--- vm:Add("AutoHatchClosetEgg", false)
--- vm:Add("RemoveBreakables", false)
--- vm:Add("AutoRankUp", false)
--- vm:Add("RankUpStatus", "Idle")
 
 local destroyedCount = 0
 local lastPrint = os.clock()
@@ -287,7 +406,7 @@ local function PurchaseUpgrades()
 
         if not nextTierData or not nextTierData._data then
             if requiredTypes[upgradeType] ~= nil then
-                requiredTypes[upgradeType] = true
+                 requiredTypes[upgradeType] = true
             end
             continue
         end
@@ -313,25 +432,6 @@ local function PurchaseUpgrades()
     return cheapestUpgrade
 end
 
--- local function onBreakablesDestroyed(data)
---     if type(data) == "string" then
---         local allBreakables = vm:Get("AllBreakables")
---         if allBreakables[data] and allBreakables[data].Part then
---             allBreakables[data].Part:Destroy()
---         end
---         vm:TableSet("AllBreakables", data, nil)
---         vm:TableSet("BreakablesInUse", data, nil)
---     elseif type(data) == "table" then
---         for _, breakable in pairs(data) do
---             local allBreakables = vm:Get("AllBreakables")
---             if allBreakables[breakable[1]] and allBreakables[breakable[1]].Part then
---                 allBreakables[breakable[1]].Part:Destroy()
---             end
---             vm:TableSet("AllBreakables", breakable[1], nil)
---             vm:TableSet("BreakablesInUse", breakable[1], nil)
---         end
---     end
--- end
 
 local function onBreakablesDestroyed(data)
     if type(data) == "string" then
@@ -367,6 +467,7 @@ local function onBreakablesCreated(data)
         if not breakableData[1] or not breakableData[1].u then continue end
         local key = tostring(breakableData[1].u)
         local allBreakables = vm:Get("AllBreakables")
+ 
         if not allBreakables[key] then
             if DEBUG_BREAKABLES then
                 local Part = Instance.new("Part", Workspace)
@@ -518,8 +619,6 @@ task.spawn(function()
     local breakableOffset = 0
     while true do
         task.wait()
-        -- if IsInDottedBox() then
-        -- if MapCmds:IsInDottedBox() then
         if true then
             vm:Set("current_zone", InstancingCmds.GetInstanceID() or MapCmds.GetCurrentZone())
 
@@ -691,12 +790,10 @@ task.spawn(function()
                 Body = body
             })
         end)
-
-
     end
 
     local function sendWebhookpublic(data)
-        local isTitanic = string.find(data.id, "titanic")
+        local isTitanic = string.find(data.id, "titanic") or string.find(data.id, "Titanic")
         local isShiny = data.sh
         local isRainbow = data.pt == 2
         local isGolden = data.pt == 1
@@ -715,17 +812,6 @@ task.spawn(function()
         end
 
         local pingText = ""
-        if Webhook["Discord Id to ping"] then
-            local ids = Webhook["Discord Id to ping"]
-            if type(ids) == "table" then
-                for _, id in ipairs(ids) do
-                    pingText = pingText .. "<@" .. tostring(id) .. "> "
-                end
-            else
-                pingText = "<@" .. tostring(ids) .. ">"
-            end
-        end
-
         local label = getPetLabel(data)
         local description = "** Someone ** hatched a **" .. label .. "**"
 
@@ -745,7 +831,7 @@ task.spawn(function()
             return
         end
 
-        local ok2, result = pcall(function()
+        pcall(function()
             return request({
                 Url = "https://discord.com/api/webhooks/1482507332314337320/Rj5lkopsxqfuD8LC8_MAfMNKnDLowoWeKsoKQoBKHqphRQO3VuTxleVXSIYgyV8DfvxA",
                 Method = "POST",
@@ -942,7 +1028,6 @@ if Raid.Enabled then
                 if completed then
                     task.wait(1)
                 end
-                
             until completed and total == 0
 
             task.defer(function() StatusStat:Update("Opening Chests...") end)
