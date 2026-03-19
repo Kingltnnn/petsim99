@@ -3,27 +3,12 @@ _G.Started = true
 
 local defaultConfig = {
     ["Raid Settings"] = {
-        Enabled = true,
-        Difficulty = 1,
-        OpenLeprechaunChest = false,
-        ["Boss Settings"] = {
-            Enabled = true,
-            TargetBosses = {"Boss 1", "Boss 2", "Boss 3"},
-            UpgradeBossChests = true,
-        },
-        ["Egg Settings"] = {
-            Enabled = true,
-            MinimumEggMulti = 500,
-            MinimumLuckyCoins = "1m",
-            MaxOpenTime = 30000,
-        },
+        Enabled = true, Difficulty = 1, OpenLeprechaunChest = false,
+        ["Boss Settings"] = { Enabled = true, TargetBosses = {"Boss 1", "Boss 2", "Boss 3"}, UpgradeBossChests = true },
+        ["Egg Settings"] = { Enabled = true, MinimumEggMulti = 500, MinimumLuckyCoins = "1m", MaxOpenTime = 30000 },
     },
-    ["Webhook"] = {
-        url = "",
-        ["Discord Id to ping"] = {""},
-    },
+    ["Webhook"] = { url = "", ["Discord Id to ping"] = {""} },
     ["Hatch Starter Pets"] = false,
-
     ["UpgradeSettings"] = {
         LuckyRaidXP                 = { priority = 1, priority_upgrade = 13, maxTier = 17, required = true },
         LuckyRaidDamage             = { priority = 2, priority_upgrade = 15, maxTier = 17, required = true },
@@ -33,26 +18,18 @@ local defaultConfig = {
         LuckyRaidHugeChest          = { priority = 11, maxTier = 99 },
         LuckyRaidBossHugeChances    = { priority = 12, maxTier = 99 },
         LuckyRaidBossTitanicChances = { priority = 13, maxTier = 99 },
-
-        LuckyRaidBetterLoot      = { enabled = false },
-        LuckyRaidPetSpeed        = { enabled = false },
-        LuckyRaidMoreCurrency    = { enabled = false },
-        LuckyRaidEggCost         = { enabled = false },
-        LuckyRaidKeyDrops        = { enabled = false },
+        LuckyRaidBetterLoot      = { enabled = false }, LuckyRaidPetSpeed = { enabled = false }, LuckyRaidMoreCurrency = { enabled = false },
+        LuckyRaidEggCost         = { enabled = false }, LuckyRaidKeyDrops = { enabled = false },
     },
 }
 
 local function mergeConfig(default, user)
     local result = {}
     for k, v in pairs(default) do
-        if type(v) == "table" and type(user[k]) == "table" then
-            result[k] = mergeConfig(v, user[k])
-        elseif user[k] ~= nil then result[k] = user[k]
-        else result[k] = v end
+        if type(v) == "table" and type(user[k]) == "table" then result[k] = mergeConfig(v, user[k])
+        elseif user[k] ~= nil then result[k] = user[k] else result[k] = v end
     end
-    for k, v in pairs(user) do
-        if result[k] == nil then result[k] = v end
-    end
+    for k, v in pairs(user) do if result[k] == nil then result[k] = v end end
     return result
 end
 
@@ -87,12 +64,9 @@ local vm = load("https://raw.githubusercontent.com/Paule1248/Open-Source/refs/he
 local utils = load("https://raw.githubusercontent.com/Paule1248/Open-Source/refs/heads/main/Utils/Utils", "Utils.lua")
 
 --====================================================================--
---//                     HASTY UI LIBRARY (CLONE)                   //--
+--//                   HASTY UI (FULLSCREEN EDITION)                //--
 --====================================================================--
 local CoreGui = game:GetService("CoreGui")
-local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
 
 local function FormatValue(Value)
     local n = tonumber(Value)
@@ -114,58 +88,67 @@ function lib:CreateWindow(TitleText)
     local WindowObj = {}
     
     local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = "HastyAutoUI"
+    ScreenGui.Name = "HastyFullscreenUI"
     ScreenGui.Parent = CoreGui
     ScreenGui.ResetOnSpawn = false
+    ScreenGui.IgnoreGuiInset = true
 
-    local MainFrame = Instance.new("Frame")
-    MainFrame.Name = "MainFrame"
-    MainFrame.Size = UDim2.new(0, 300, 0, 420)
-    MainFrame.Position = UDim2.new(0.5, -150, 0.5, -210)
-    MainFrame.BackgroundColor3 = Color3.fromRGB(20, 24, 35)
-    MainFrame.Parent = ScreenGui
+    -- Màn hình nền đen Fullscreen
+    local FullscreenBG = Instance.new("Frame")
+    FullscreenBG.Size = UDim2.new(1, 0, 1, 0)
+    FullscreenBG.BackgroundColor3 = Color3.fromRGB(14, 19, 30) -- Màu đen xanh trầm đặc trưng
+    FullscreenBG.BorderSizePixel = 0
+    FullscreenBG.Parent = ScreenGui
+    WindowObj.MainBackground = FullscreenBG
 
-    local UICorner = Instance.new("UICorner")
-    UICorner.CornerRadius = UDim.new(0, 8)
-    UICorner.Parent = MainFrame
+    -- Nút Toggle góc phải dưới để Ẩn/Hiện giao diện (không tắt Auto)
+    local ToggleBtn = Instance.new("TextButton")
+    ToggleBtn.Size = UDim2.new(0, 50, 0, 50)
+    ToggleBtn.Position = UDim2.new(1, -20, 1, -20)
+    ToggleBtn.AnchorPoint = Vector2.new(1, 1)
+    ToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 255, 180)
+    ToggleBtn.Text = "👁"
+    ToggleBtn.TextSize = 25
+    ToggleBtn.Font = Enum.Font.GothamBold
+    ToggleBtn.Parent = ScreenGui
+    
+    local BtnCorner = Instance.new("UICorner")
+    BtnCorner.CornerRadius = UDim.new(1, 0)
+    BtnCorner.Parent = ToggleBtn
 
-    local UIStroke = Instance.new("UIStroke")
-    UIStroke.Color = Color3.fromRGB(30, 255, 180)
-    UIStroke.Thickness = 1
-    UIStroke.Parent = MainFrame
-
-    local UIGradientStroke = Instance.new("UIGradient")
-    UIGradientStroke.Color = ColorSequence.new{
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(30, 255, 180)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 160, 140))
-    }
-    UIGradientStroke.Parent = UIStroke
-
-    local Dragging, DragInput, DragStart, StartPos
-    MainFrame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            Dragging = true; DragStart = input.Position; StartPos = MainFrame.Position
-            input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then Dragging = false end end)
-        end
-    end)
-    MainFrame.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then DragInput = input end
-    end)
-    UserInputService.InputChanged:Connect(function(input)
-        if input == DragInput and Dragging then
-            local Delta = input.Position - DragStart
-            MainFrame.Position = UDim2.new(StartPos.X.Scale, StartPos.X.Offset + Delta.X, StartPos.Y.Scale, StartPos.Y.Offset + Delta.Y)
-        end
+    local uiVisible = true
+    ToggleBtn.MouseButton1Click:Connect(function()
+        uiVisible = not uiVisible
+        FullscreenBG.Visible = uiVisible
+        ToggleBtn.Text = uiVisible and "👁" or "🙈"
+        ToggleBtn.BackgroundColor3 = uiVisible and Color3.fromRGB(30, 255, 180) or Color3.fromRGB(255, 80, 80)
     end)
 
+    -- Khu vực chứa text ở giữa màn hình
+    local Container = Instance.new("Frame")
+    Container.Size = UDim2.new(0, 600, 0.8, 0)
+    Container.Position = UDim2.new(0.5, 0, 0.5, 0)
+    Container.AnchorPoint = Vector2.new(0.5, 0.5)
+    Container.BackgroundTransparency = 1
+    Container.Parent = FullscreenBG
+    WindowObj.Container = Container
+
+    local UIListLayout = Instance.new("UIListLayout")
+    UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+    UIListLayout.Padding = UDim.new(0, 15)
+    UIListLayout.Parent = Container
+
+    -- Tiêu đề lớn HASTY AUTO LUCKY RAID
     local TitleLabel = Instance.new("TextLabel")
-    TitleLabel.Size = UDim2.new(1, 0, 0, 40)
+    TitleLabel.Size = UDim2.new(1, 0, 0, 70)
     TitleLabel.BackgroundTransparency = 1
     TitleLabel.Font = Enum.Font.FredokaOne
-    TitleLabel.Text = "✨ " .. TitleText
+    TitleLabel.Text = TitleText
     TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    TitleLabel.TextSize = 16
-    TitleLabel.Parent = MainFrame
+    TitleLabel.TextSize = 45
+    TitleLabel.Parent = Container
 
     local TitleGradient = Instance.new("UIGradient")
     TitleGradient.Color = ColorSequence.new{
@@ -174,76 +157,61 @@ function lib:CreateWindow(TitleText)
     }
     TitleGradient.Parent = TitleLabel
 
-    local ContentContainer = Instance.new("ScrollingFrame")
-    ContentContainer.Size = UDim2.new(1, 0, 1, -50)
-    ContentContainer.Position = UDim2.new(0, 0, 0, 40)
-    ContentContainer.BackgroundTransparency = 1
-    ContentContainer.ScrollBarThickness = 2
-    ContentContainer.BorderSizePixel = 0
-    ContentContainer.Parent = MainFrame
-
-    local UIListLayout = Instance.new("UIListLayout")
-    UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    UIListLayout.Parent = ContentContainer
+    WindowObj.orderCount = 1
 
     function WindowObj:AddSeparator()
-        local SepContainer = Instance.new("Frame")
-        SepContainer.Size = UDim2.new(1, 0, 0, 15)
-        SepContainer.BackgroundTransparency = 1
-        SepContainer.Parent = ContentContainer
-
         local Sep = Instance.new("Frame")
-        Sep.Size = UDim2.new(0.8, 0, 0, 1)
-        Sep.Position = UDim2.new(0.1, 0, 0.5, 0)
+        Sep.Size = UDim2.new(0.8, 0, 0, 2)
         Sep.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
         Sep.BorderSizePixel = 0
-        Sep.Parent = SepContainer
+        Sep.LayoutOrder = self.orderCount
+        self.orderCount = self.orderCount + 1
+        Sep.Parent = self.Container
 
         local SepGradient = Instance.new("UIGradient")
         SepGradient.Transparency = NumberSequence.new{
             NumberSequenceKeypoint.new(0, 1),
-            NumberSequenceKeypoint.new(0.5, 0.8),
+            NumberSequenceKeypoint.new(0.3, 0.5),
+            NumberSequenceKeypoint.new(0.7, 0.5),
             NumberSequenceKeypoint.new(1, 1)
         }
         SepGradient.Parent = Sep
-
-        ContentContainer.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y)
     end
-
-    WindowObj:AddSeparator()
 
     function WindowObj:AddStat(StatName, InitialValue, Format)
         local shouldFormat = if Format == nil then true else Format
+        local order = self.orderCount
+        self.orderCount = self.orderCount + 1
         
         local StatFrame = Instance.new("Frame")
-        StatFrame.Size = UDim2.new(1, 0, 0, 25)
+        StatFrame.Size = UDim2.new(1, 0, 0, 30)
         StatFrame.BackgroundTransparency = 1
-        StatFrame.Parent = ContentContainer
+        StatFrame.LayoutOrder = order
+        StatFrame.Parent = self.Container
 
+        -- Chữ Trái (Tên Chỉ số)
         local LeftLabel = Instance.new("TextLabel")
-        LeftLabel.Size = UDim2.new(0.5, -15, 1, 0)
-        LeftLabel.Position = UDim2.new(0, 15, 0, 0)
+        LeftLabel.Size = UDim2.new(0.5, -20, 1, 0)
+        LeftLabel.Position = UDim2.new(0, 0, 0, 0)
         LeftLabel.BackgroundTransparency = 1
         LeftLabel.Text = StatName
         LeftLabel.Font = Enum.Font.GothamBold
         LeftLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-        LeftLabel.TextSize = 12
+        LeftLabel.TextSize = 20
         LeftLabel.TextXAlignment = Enum.TextXAlignment.Left
         LeftLabel.Parent = StatFrame
 
+        -- Chữ Phải (Giá trị)
         local RightLabel = Instance.new("TextLabel")
-        RightLabel.Size = UDim2.new(0.5, -15, 1, 0)
-        RightLabel.Position = UDim2.new(0.5, 0, 0, 0)
+        RightLabel.Size = UDim2.new(0.5, -20, 1, 0)
+        RightLabel.Position = UDim2.new(0.5, 20, 0, 0)
         RightLabel.BackgroundTransparency = 1
         RightLabel.Text = shouldFormat and FormatValue(InitialValue) or tostring(InitialValue)
         RightLabel.Font = Enum.Font.GothamBold
         RightLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-        RightLabel.TextSize = 12
+        RightLabel.TextSize = 20
         RightLabel.TextXAlignment = Enum.TextXAlignment.Right
-        RightLabel.TextTruncate = Enum.TextTruncate.AtEnd
         RightLabel.Parent = StatFrame
-
-        ContentContainer.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y)
 
         local StatObj = {}
         function StatObj:Update(NewValue)
@@ -253,54 +221,18 @@ function lib:CreateWindow(TitleText)
         end
         return StatObj
     end
-
-    function WindowObj:AddButton(Text)
-        local BtnFrame = Instance.new("Frame")
-        BtnFrame.Size = UDim2.new(1, 0, 0, 45)
-        BtnFrame.BackgroundTransparency = 1
-        BtnFrame.Parent = ContentContainer
-
-        local Button = Instance.new("TextButton")
-        Button.Size = UDim2.new(0.9, 0, 0, 30)
-        Button.Position = UDim2.new(0.05, 0, 0.5, -15)
-        Button.BackgroundColor3 = Color3.fromRGB(35, 40, 55)
-        Button.Text = Text
-        Button.Font = Enum.Font.GothamBold
-        Button.TextColor3 = Color3.fromRGB(255, 255, 255)
-        Button.TextSize = 12
-        Button.AutoButtonColor = false
-        Button.Parent = BtnFrame
-
-        local Corner = Instance.new("UICorner")
-        Corner.CornerRadius = UDim.new(0, 6)
-        Corner.Parent = Button
-
-        local Stroke = Instance.new("UIStroke")
-        Stroke.Color = Color3.fromRGB(50, 55, 70)
-        Stroke.Parent = Button
-
-        Button.MouseButton1Click:Connect(function()
-            TweenService:Create(Button, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(30, 255, 180)}):Play()
-            task.wait(0.1)
-            TweenService:Create(Button, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(35, 40, 55)}):Play()
-            
-            Raid.Enabled = not Raid.Enabled
-            Button.Text = Raid.Enabled and "STOP AUTO" or "START AUTO"
-        end)
-
-        ContentContainer.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y)
-    end
-
+    
     return WindowObj
 end
 
 --====================================================================--
 local vm = vm:new()
-local Window = lib:CreateWindow("HASTY AUTO LUCKY RAID")
+local Window = lib:CreateWindow("AUTO LUCKY RAID")
 
-local LevelStat = Window:AddStat("CurrentLevel", 0)
-local RoomStat = Window:AddStat("Current Room", 0)
 local StatusStat = Window:AddStat("Status", "Starting...", false)
+Window:AddSeparator()
+local LevelStat = Window:AddStat("Current Level", 0)
+local RoomStat = Window:AddStat("Current Room", 0)
 local BreakablesLeftStat = Window:AddStat("Total Breakables Left", 0)
 local RaidsCompletedStat = Window:AddStat("Total Raids Completed", 0)
 
@@ -313,8 +245,6 @@ Window:AddSeparator()
 local TimeFarmedStat = Window:AddStat("Time Farmed", "00:00:00", false)
 local FpsStat = Window:AddStat("FPS", 60, false)
 
-Window:AddButton("STOP AUTO")
-
 local scriptStartTime = os.time()
 task.spawn(function()
     while task.wait(1) do
@@ -324,6 +254,7 @@ task.spawn(function()
     end
 end)
 
+local Workspace = game:GetService("Workspace")
 task.spawn(function()
     while task.wait(0.5) do
         FpsStat:Update(math.floor(Workspace:GetRealPhysicsFPS()))
@@ -695,17 +626,14 @@ task.spawn(function()
     end
 end)
 
--- LOGIC AUTO BOSS MỚI
 local function OpenBossRooms(CurrentRaid)
     if not CurrentRaid then return end
-    
     local BossSettings = Raid["Boss Settings"]
     if not BossSettings or not BossSettings.Enabled then return end
     local targetBosses = BossSettings.TargetBosses or {}
     
     for i, v in pairs(Raids.BossDirectory) do
         if CurrentRaid._roomNumber < v.RequiredRoom then continue end
-        
         local bossName = "Boss " .. tostring(v.BossNumber)
         if not table.find(targetBosses, bossName) then continue end
         
