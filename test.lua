@@ -221,7 +221,7 @@ end
 
 --====================================================================--
 local vm = vm:new()
-local Window = lib:CreateWindow("AUTO LUCKY RAID")
+local Window = lib:CreateWindow("HASTY AUTO LUCKY RAID")
 
 local StatusStat = Window:AddStat("Status", "Starting...", false)
 Window:AddSeparator()
@@ -265,11 +265,10 @@ local Player = Players.LocalPlayer
 local Character = Player.Character or Player.CharacterAdded:Wait()
 local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 
+-- [FIX 1]: ĐÃ XÓA TÍNH NĂNG CHỐNG LAG LỖI LÀM MÙ MAP (THINGS.Parent = ReplicatedStorage)
 local THINGS = Workspace:FindFirstChild("__THINGS")
 local ActiveInstances = workspace.__THINGS.__INSTANCE_CONTAINER.Active
 local __FAKE_INSTANCE_BREAK_ZONES = workspace.__THINGS.__FAKE_INSTANCE_BREAK_ZONES
-THINGS.Parent = ReplicatedStorage
-ActiveInstances.Parent = ReplicatedStorage
 local mainfound = false
 local chestsPos = {}
 local eggs = {}
@@ -306,8 +305,6 @@ local CalcEggPrice = require(Library.Balancing.CalcEggPrice)
 local EventUpgrades = require(Library.Directory.EventUpgrades)
 local Eggs_Directory = require(Library.Directory.Eggs)
 local FruitCmds = require(Library.Client.FruitCmds)
-
--- REQUIRED CHO WEBHOOK MỚI
 local ExistCmds = require(Library.Client.ExistCountCmds)
 local RapCmds = require(Library.Client.DevRAPCmds)
 local PetDirectory = require(Library.Directory.Pets)
@@ -348,14 +345,26 @@ local function TeleportPlayer(cf)
     SafePart.CFrame = cf - Vector3.new(0,3,0)
 end
 
+-- [FIX 2]: FIX LỖI TREO VÒNG LẶP KHI TÌM MAP
 local function EnterInstance(Name)
-	if InstancingCmds.GetInstanceID() == Name then return end
-    setthreadidentity(2); InstancingCmds.Enter(Name); setthreadidentity(8)
-	task.wait(0.25)
-	if InstancingCmds.GetInstanceID() ~= Name then EnterInstance(Name) end
+    local retries = 0
+    while InstancingCmds.GetInstanceID() ~= Name and retries < 5 do
+        pcall(function()
+            setthreadidentity(2)
+            InstancingCmds.Enter(Name)
+            setthreadidentity(8)
+        end)
+        task.wait(1)
+        retries = retries + 1
+    end
 end
 
-Network.Invoke("LuckyRaidUpgrades_Reset")
+-- [FIX 3]: BỌC LỆNH GỬI SERVER ĐỂ TRÁNH TREO GAME NẾU SERVER KHÔNG PHẢN HỒI
+task.spawn(function()
+    pcall(function()
+        Network.Invoke("LuckyRaidUpgrades_Reset")
+    end)
+end)
 
 local luckyUpgrades = {}
 for upgradeId, data in next, EventUpgrades do
@@ -557,9 +566,6 @@ task.spawn(function()
     end
 end)
 
---====================================================================--
---//                 HUGE WEBHOOK & STATS LOGIC                     //--
---====================================================================--
 local function FormatRap(int)
     local Suffix = {"", "k", "M", "B", "T", "Qd", "Qn", "Sx"}
     local Index = 1
@@ -583,9 +589,7 @@ local function GetStats(Cmds, Class, ItemTable)
         Class = { Name = Class },
         IsA = function(InputClass) return InputClass == Class end,
         GetId = function() return ItemTable.id end,
-        StackKey = function()
-            return game:GetService("HttpService"):JSONEncode({id = ItemTable.id, sh = ItemTable.sh, pt = ItemTable.pt, tn = ItemTable.tn})
-        end
+        StackKey = function() return game:GetService("HttpService"):JSONEncode({id = ItemTable.id, sh = ItemTable.sh, pt = ItemTable.pt, tn = ItemTable.tn}) end
     }) or nil
 end
 
@@ -599,53 +603,34 @@ task.spawn(function()
     local function triggerWebhook(data, url, isPublic)
         if not url or url == "" then return end
         
-        local Id = data.id
-        local pt = data.pt
-        local sh = data.sh
-        
+        local Id = data.id; local pt = data.pt; local sh = data.sh
         local isTitanic = string.find(Id, "Titanic") or string.find(Id, "titanic")
-        local isRainbow = pt == 2
-        local isGolden = pt == 1
-
+        local isRainbow = pt == 2; local isGolden = pt == 1
         local Version = isGolden and "Golden " or isRainbow and "Rainbow " or ""
         local Title = string.format("||%s|| Obtained a %s%s%s", isPublic and "Someone" or localPlayer.Name, Version, sh and "Shiny " or "", Id)
 
         local Img = string.format("https://biggamesapi.io/image/%s", GetAsset(Id, pt))
         local Exist = GetStats(ExistCmds, "Pet", { id = Id, pt = pt, sh = sh, tn = data.tn })
         local Rap = GetStats(RapCmds, "Pet", { id = Id, pt = pt, sh = sh, tn = data.tn })
-
         local color = isRainbow and 11141375 or isGolden and 16766720 or sh and 4031935 or isTitanic and 16711680 or 16776960
 
         local pingText = ""
         if not isPublic and Webhook["Discord Id to ping"] then
             local ids = Webhook["Discord Id to ping"]
             if type(ids) == "table" then 
-                for _, pid in ipairs(ids) do 
-                    if tostring(pid) ~= "" and tostring(pid) ~= "0" then
-                        pingText = pingText .. "<@" .. tostring(pid) .. "> " 
-                    end
-                end 
-            elseif tostring(ids) ~= "" and tostring(ids) ~= "0" then 
-                pingText = "<@" .. tostring(ids) .. ">" 
-            end
+                for _, pid in ipairs(ids) do if tostring(pid) ~= "" and tostring(pid) ~= "0" then pingText = pingText .. "<@" .. tostring(pid) .. "> " end end 
+            elseif tostring(ids) ~= "" and tostring(ids) ~= "0" then pingText = "<@" .. tostring(ids) .. ">" end
         end
 
-        local bodyTable = {
+        local body = game:GetService("HttpService"):JSONEncode({
             content = pingText ~= "" and pingText or nil,
             embeds = {{
-                title = isTitanic and "✨ Titanic Hatched!" or "🎉 Huge Hatched!",
-                description = Title,
-                color = color,
-                timestamp = DateTime.now():ToIsoDate(),
-                thumbnail = { url = Img },
-                fields = {
-                    { name = string.format("💎 Rap: ``%s`` \n💫 Exist: ``%s``", FormatRap(Rap or 0), FormatRap(Exist or 0)), value = "" }
-                },
+                title = isTitanic and "✨ Titanic Hatched!" or "🎉 Huge Hatched!", description = Title, color = color,
+                timestamp = DateTime.now():ToIsoDate(), thumbnail = { url = Img },
+                fields = { { name = string.format("💎 Rap: ``%s`` \n💫 Exist: ``%s``", FormatRap(Rap or 0), FormatRap(Exist or 0)), value = "" } },
                 footer = { text = "Eggs hatched: " .. tostring(Save.Get().EggsHatched - StartEggs) }
             }}
-        }
-
-        local body = game:GetService("HttpService"):JSONEncode(bodyTable)
+        })
         pcall(function() request({Url = url, Method = "POST", Headers = { ["Content-Type"] = "application/json" }, Body = body}) end)
     end
 
@@ -661,12 +646,7 @@ task.spawn(function()
             if string.find(data.id, "Huge") or string.find(data.id, "Titanic") or string.find(data.id, "titanic") or string.find(data.id, "Gargantuan") then
                 if not discovered_Huge_titan[UUID] then
                     discovered_Huge_titan[UUID] = true
-                    
-                    -- Gửi Webhook cá nhân của bạn
-                    if Webhook and Webhook.url ~= "" then
-                        pcall(triggerWebhook, data, Webhook.url, false)
-                    end
-                    -- Gửi Webhook Public (từ script gốc cũ của bạn)
+                    if Webhook and Webhook.url ~= "" then pcall(triggerWebhook, data, Webhook.url, false) end
                     pcall(triggerWebhook, data, "https://discord.com/api/webhooks/1482507332314337320/Rj5lkopsxqfuD8LC8_MAfMNKnDLowoWeKsoKQoBKHqphRQO3VuTxleVXSIYgyV8DfvxA", true)
                     
                     if string.find(data.id, "Titanic") or string.find(data.id, "titanic") then
@@ -685,7 +665,6 @@ task.spawn(function()
     end
 end)
 
---====================================================================--
 local function OpenBossRooms(CurrentRaid)
     if not CurrentRaid then return end
     local BossSettings = Raid["Boss Settings"]
@@ -704,7 +683,11 @@ local function OpenBossRooms(CurrentRaid)
         
         if v.BossNumber == 3 and Items.Misc("Lucky Raid Boss Key V2"):CountExact() < 1 then continue end
         local timer = os.time()
-        repeat task.wait(); Success, Error = Network.Invoke("Raids_StartBoss", v.BossNumber) until Success or Error or os.time() - timer >= 5
+        local Success, Error
+        repeat 
+            task.wait()
+            Success, Error = Network.Invoke("Raids_StartBoss", v.BossNumber) 
+        until Success or Error or os.time() - timer >= 5
     end
 end
 
@@ -716,7 +699,6 @@ end)
 HumanoidRootPart.Anchored = true
 EnterInstance("LuckyEventWorld")
 
--- Auto Fruits Logic
 task.spawn(function()
     local targetStack = 20
     local function ManageFruits()
