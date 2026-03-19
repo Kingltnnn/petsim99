@@ -5,19 +5,16 @@ local defaultConfig = {
     ["Raid Settings"] = {
         Enabled = true, Difficulty = 1, OpenLeprechaunChest = false,
         ["Boss Settings"] = { Enabled = true, TargetBosses = {"Boss 1", "Boss 2", "Boss 3"}, UpgradeBossChests = true },
-        ["Egg Settings"] = { Enabled = true, MinimumEggMulti = 500, MinimumLuckyCoins = "1m", MaxOpenTime = 30000 },
+        ["Egg Settings"] = { Enabled = true, MinimumEggMulti = 500, MinimumLuckyCoins = "1m", MaxOpenTime = 30 },
     },
     ["Webhook"] = { url = "", ["Discord Id to ping"] = {""} },
-    ["Hatch Starter Pets"] = false,
     ["UpgradeSettings"] = {
         LuckyRaidXP                 = { priority = 1, priority_upgrade = 13, maxTier = 17, required = true },
         LuckyRaidDamage             = { priority = 2, priority_upgrade = 15, maxTier = 17, required = true },
         LuckyRaidAttackSpeed        = { priority = 3, priority_upgrade = 7,  maxTier = 10, required = true },
         LuckyRaidPets               = { priority = 4, priority_upgrade = 10, maxTier = 10, required = true },
-        LuckyRaidTitanicChest       = { priority = 10, maxTier = 99 },
-        LuckyRaidHugeChest          = { priority = 11, maxTier = 99 },
-        LuckyRaidBossHugeChances    = { priority = 12, maxTier = 99 },
-        LuckyRaidBossTitanicChances = { priority = 13, maxTier = 99 },
+        LuckyRaidTitanicChest       = { priority = 10, maxTier = 99 }, LuckyRaidHugeChest = { priority = 11, maxTier = 99 },
+        LuckyRaidBossHugeChances    = { priority = 12, maxTier = 99 }, LuckyRaidBossTitanicChances = { priority = 13, maxTier = 99 },
         LuckyRaidBetterLoot      = { enabled = false }, LuckyRaidPetSpeed = { enabled = false }, LuckyRaidMoreCurrency = { enabled = false },
         LuckyRaidEggCost         = { enabled = false }, LuckyRaidKeyDrops = { enabled = false },
     },
@@ -56,207 +53,159 @@ local function load(url, file)
         writefile(path, res)
         return loadstring(res)()
     end
-    assert(isfile(path), "Failed to load and no cache found: " .. file)
     return loadstring(readfile(path))()
 end
 
 local vm = load("https://raw.githubusercontent.com/Paule1248/Open-Source/refs/heads/main/Utils/VariablesManager", "VariablesManager.lua")
-local utils = load("https://raw.githubusercontent.com/Paule1248/Open-Source/refs/heads/main/Utils/Utils", "Utils.lua")
 
 --====================================================================--
---//                   HASTY UI (FULLSCREEN EDITION)                //--
+--//                   PIRA UI LIBRARY (ORIGINAL MODDED)            //--
 --====================================================================--
-local CoreGui = game:GetService("CoreGui")
+local FarmUI = {}
+FarmUI.__index = FarmUI
 
-local function FormatValue(Value)
-    local n = tonumber(Value)
-    if not n then return tostring(Value) end
-    local suffixes = {"", "k", "M", "B", "T", "QD", "QN"}
-    local index = 1
-    local absNumber = math.abs(n)
-    while absNumber >= 1000 and index < #suffixes do
-        absNumber = absNumber / 1000
-        index = index + 1
-    end
-    local sign = n < 0 and "-" or ""
-    local formatted = (absNumber >= 1 and index > 1) and string.format("%.1f", absNumber):gsub("%.0$", "") or tostring(math.floor(absNumber * 100) / 100)
-    return sign .. formatted .. suffixes[index]
-end
+function FarmUI.new(Config)
+	local Self = setmetatable({}, FarmUI)
+	Self.Player = game.Players.LocalPlayer
+	Self.GuiName = "PiraScreenGui"
+	Self.Logo = ""
+	Self.Elements = {}
+	Self.Parent = game:GetService("CoreGui")
+	
+	local ScreenGui = Instance.new("ScreenGui")
+	ScreenGui.Name = Self.GuiName
+	ScreenGui.IgnoreGuiInset = true
+	ScreenGui.Parent = Self.Parent
+	ScreenGui.ResetOnSpawn = false
+	Self.ScreenGui = ScreenGui
 
-local lib = {}
-function lib:CreateWindow(TitleText)
-    local WindowObj = {}
-    
-    local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = "HastyFullscreenUI"
-    ScreenGui.Parent = CoreGui
-    ScreenGui.ResetOnSpawn = false
-    ScreenGui.IgnoreGuiInset = true
+    -- MÀN HÌNH ĐEN CHÍNH
+	local Background = Instance.new("Frame")
+	Background.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+	Background.BorderColor3 = Color3.fromRGB(255, 0, 255)
+	Background.BorderMode = Enum.BorderMode.Inset
+	Background.Parent = ScreenGui
+	Background.Size = UDim2.new(0.2, 0, 0.25, 0)
+	Background.Position = UDim2.new(0.5, 0, 0.5, 0)
+	Background.AnchorPoint = Vector2.new(0.5, 0.5)
 
-    local FullscreenBG = Instance.new("Frame")
-    FullscreenBG.Size = UDim2.new(1, 0, 1, 0)
-    FullscreenBG.BackgroundColor3 = Color3.fromRGB(14, 19, 30)
-    FullscreenBG.BorderSizePixel = 0
-    FullscreenBG.Parent = ScreenGui
-    WindowObj.MainBackground = FullscreenBG
+	local Logo = Instance.new("ImageLabel")
+	Logo.Position = UDim2.new(0.02, 0, 0.05, 0)
+	Logo.BackgroundTransparency = 1
+	Logo.Image = Self.Logo
+	Logo.Size = UDim2.new(0.15, 0, 0.2, 0)
+	Logo.Parent = Background
+	Instance.new("UIAspectRatioConstraint", Logo).AspectRatio = 1
 
+	local Container = Instance.new("Frame")
+	Container.Size = UDim2.new(1, 0, 1, 0)
+	Container.BackgroundTransparency = 1
+	Container.Parent = Background
+	Self.Container = Container
+
+	local Layout = Instance.new("UIListLayout")
+	Layout.Padding = UDim.new(0.02, 0)
+	Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	Layout.VerticalAlignment = Enum.VerticalAlignment.Center
+	Layout.SortOrder = Enum.SortOrder.LayoutOrder
+	Layout.Parent = Container
+
+    -- NÚT TẮT BẬT MÀN HÌNH (TOGGLE BUTTON)
     local ToggleBtn = Instance.new("TextButton")
-    ToggleBtn.Size = UDim2.new(0, 50, 0, 50)
-    ToggleBtn.Position = UDim2.new(1, -20, 1, -20)
-    ToggleBtn.AnchorPoint = Vector2.new(1, 1)
-    ToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 255, 180)
+    ToggleBtn.Size = UDim2.new(0, 45, 0, 45)
+    ToggleBtn.Position = UDim2.new(1, -15, 0.5, 0) -- Nằm ở mép giữa bên phải
+    ToggleBtn.AnchorPoint = Vector2.new(1, 0.5)
+    ToggleBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
     ToggleBtn.Text = "👁"
-    ToggleBtn.TextSize = 25
-    ToggleBtn.Font = Enum.Font.GothamBold
+    ToggleBtn.TextSize = 22
     ToggleBtn.Parent = ScreenGui
     
-    local BtnCorner = Instance.new("UICorner")
-    BtnCorner.CornerRadius = UDim.new(1, 0)
-    BtnCorner.Parent = ToggleBtn
-
-    local uiVisible = true
+    local UICornerBtn = Instance.new("UICorner")
+    UICornerBtn.CornerRadius = UDim.new(1, 0)
+    UICornerBtn.Parent = ToggleBtn
+    
+    local UIStrokeBtn = Instance.new("UIStroke")
+    UIStrokeBtn.Color = Color3.fromRGB(255, 0, 255)
+    UIStrokeBtn.Thickness = 2
+    UIStrokeBtn.Parent = ToggleBtn
+    
     ToggleBtn.MouseButton1Click:Connect(function()
-        uiVisible = not uiVisible
-        FullscreenBG.Visible = uiVisible
-        ToggleBtn.Text = uiVisible and "👁" or "🙈"
-        ToggleBtn.BackgroundColor3 = uiVisible and Color3.fromRGB(30, 255, 180) or Color3.fromRGB(255, 80, 80)
+        Background.Visible = not Background.Visible
+        ToggleBtn.Text = Background.Visible and "👁" or "🙈"
     end)
 
-    local Container = Instance.new("Frame")
-    Container.Size = UDim2.new(0, 600, 0.8, 0)
-    Container.Position = UDim2.new(0.5, 0, 0.5, 0)
-    Container.AnchorPoint = Vector2.new(0.5, 0.5)
-    Container.BackgroundTransparency = 1
-    Container.Parent = FullscreenBG
-    WindowObj.Container = Container
+	local Dragging, DragInput, DragStart, StartPos
+	Background.InputBegan:Connect(function(Input)
+		if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+			Dragging = true
+			DragStart = Input.Position
+			StartPos = Background.Position
+			Input.Changed:Connect(function() if Input.UserInputState == Enum.UserInputState.End then Dragging = false end end)
+		end
+	end)
+	Background.InputChanged:Connect(function(Input)
+		if Input.UserInputType == Enum.UserInputType.MouseMovement then DragInput = Input end
+	end)
+	game:GetService("UserInputService").InputChanged:Connect(function(Input)
+		if Input == DragInput and Dragging then
+			local Delta = Input.Position - DragStart
+			Background.Position = UDim2.new(StartPos.X.Scale, StartPos.X.Offset + Delta.X, StartPos.Y.Scale, StartPos.Y.Offset + Delta.Y)
+		end
+	end)
 
-    local UIListLayout = Instance.new("UIListLayout")
-    UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-    UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-    UIListLayout.Padding = UDim.new(0, 15)
-    UIListLayout.Parent = Container
+	local Sorted = {}
+	for Name, Data in pairs(Config.UI) do table.insert(Sorted, {Name = Name, Order = Data[1], Text = Data[2], Size = Data[3]}) end
+	table.sort(Sorted, function(A, B) return A.Order < B.Order end)
 
-    local TitleLabel = Instance.new("TextLabel")
-    TitleLabel.Size = UDim2.new(1, 0, 0, 70)
-    TitleLabel.BackgroundTransparency = 1
-    TitleLabel.Font = Enum.Font.FredokaOne
-    TitleLabel.Text = TitleText
-    TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    TitleLabel.TextSize = 45
-    TitleLabel.Parent = Container
+	for Index, Item in ipairs(Sorted) do
+		local Label = Instance.new("TextLabel")
+		Label.Name = Item.Name
+		Label.LayoutOrder = Item.Order
+		Label.Size = Item.Size and UDim2.new(unpack(Item.Size)) or UDim2.new(0.7, 0, 0.1, 0)
+		Label.BackgroundTransparency = 1
+		Label.Font = Enum.Font.FredokaOne
+		Label.Text = Item.Text
+		Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+		Label.TextScaled = true
+		Label.Parent = Self.Container
+		Self.Elements[Item.Name] = Label
 
-    local TitleGradient = Instance.new("UIGradient")
-    TitleGradient.Color = ColorSequence.new{
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(30, 255, 180)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 160, 140))
-    }
-    TitleGradient.Parent = TitleLabel
+		if Index < #Sorted then
+			local Spacer = Instance.new("Frame")
+			Spacer.LayoutOrder = Item.Order + 0.5
+			Spacer.BackgroundColor3 = Color3.fromRGB(255, 0, 255)
+			Spacer.Size = UDim2.new(0.5, 0, 0, 1)
+			Spacer.Parent = Self.Container
+		end
+	end
+	return Self
+end
 
-    WindowObj.orderCount = 1
-
-    function WindowObj:AddSeparator()
-        local Sep = Instance.new("Frame")
-        Sep.Size = UDim2.new(0.8, 0, 0, 2)
-        Sep.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        Sep.BorderSizePixel = 0
-        Sep.LayoutOrder = self.orderCount
-        self.orderCount = self.orderCount + 1
-        Sep.Parent = self.Container
-
-        local SepGradient = Instance.new("UIGradient")
-        SepGradient.Transparency = NumberSequence.new{
-            NumberSequenceKeypoint.new(0, 1),
-            NumberSequenceKeypoint.new(0.3, 0.5),
-            NumberSequenceKeypoint.new(0.7, 0.5),
-            NumberSequenceKeypoint.new(1, 1)
-        }
-        SepGradient.Parent = Sep
-    end
-
-    function WindowObj:AddStat(StatName, InitialValue, Format)
-        local shouldFormat = if Format == nil then true else Format
-        local order = self.orderCount
-        self.orderCount = self.orderCount + 1
-        
-        local StatFrame = Instance.new("Frame")
-        StatFrame.Size = UDim2.new(1, 0, 0, 30)
-        StatFrame.BackgroundTransparency = 1
-        StatFrame.LayoutOrder = order
-        StatFrame.Parent = self.Container
-
-        local LeftLabel = Instance.new("TextLabel")
-        LeftLabel.Size = UDim2.new(0.5, -20, 1, 0)
-        LeftLabel.Position = UDim2.new(0, 0, 0, 0)
-        LeftLabel.BackgroundTransparency = 1
-        LeftLabel.Text = StatName
-        LeftLabel.Font = Enum.Font.GothamBold
-        LeftLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-        LeftLabel.TextSize = 20
-        LeftLabel.TextXAlignment = Enum.TextXAlignment.Left
-        LeftLabel.Parent = StatFrame
-
-        local RightLabel = Instance.new("TextLabel")
-        RightLabel.Size = UDim2.new(0.5, -20, 1, 0)
-        RightLabel.Position = UDim2.new(0.5, 20, 0, 0)
-        RightLabel.BackgroundTransparency = 1
-        RightLabel.Text = shouldFormat and FormatValue(InitialValue) or tostring(InitialValue)
-        RightLabel.Font = Enum.Font.GothamBold
-        RightLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-        RightLabel.TextSize = 20
-        RightLabel.TextXAlignment = Enum.TextXAlignment.Right
-        RightLabel.Parent = StatFrame
-
-        local StatObj = {}
-        function StatObj:Update(NewValue)
-            task.defer(function()
-                RightLabel.Text = shouldFormat and FormatValue(NewValue) or tostring(NewValue)
-            end)
-        end
-        return StatObj
-    end
-    
-    return WindowObj
+function FarmUI:SetText(Name, Text) 
+    if self.Elements[Name] then 
+        task.defer(function() self.Elements[Name].Text = Text end)
+    end 
+end
+function FarmUI:Format(Int)
+	local Index = 1; local Suffix = {"", "K", "M", "B", "T"}
+	while Int >= 1000 and Index < #Suffix do Int = Int / 1000; Index = Index + 1 end
+	if Index == 1 then return string.format("%d", Int) end
+	return string.format("%.2f%s", Int, Suffix[Index])
 end
 
 --====================================================================--
-local vm = vm:new()
-local Window = lib:CreateWindow("HASTY AUTO LUCKY RAID")
-
-local StatusStat = Window:AddStat("Status", "Starting...", false)
-Window:AddSeparator()
-local LevelStat = Window:AddStat("Current Level", 0)
-local RoomStat = Window:AddStat("Current Room", 0)
-local BreakablesLeftStat = Window:AddStat("Total Breakables Left", 0)
-local RaidsCompletedStat = Window:AddStat("Total Raids Completed", 0)
-
-Window:AddSeparator()
-local HugeStat = Window:AddStat("Session Huges", 0)
-local TitanicStat = Window:AddStat("Session Titanics", 0)
-local TotalEggsOpened = Window:AddStat("Total Eggs Hatched", 0)
-
-Window:AddSeparator()
-local TimeFarmedStat = Window:AddStat("Time Farmed", "00:00:00", false)
-local FpsStat = Window:AddStat("FPS", 60, false)
-
-local scriptStartTime = os.time()
-task.spawn(function()
-    while task.wait(1) do
-        local elapsed = os.time() - scriptStartTime
-        local h = math.floor(elapsed / 3600); local m = math.floor((elapsed % 3600) / 60); local s = elapsed % 60
-        TimeFarmedStat:Update(string.format("%02d:%02d:%02d", h, m, s))
-    end
-end)
+local UI = FarmUI.new({
+    UI = {
+        ["Title"] = {1, "🌟 AUTO LUCKY RAID", {0.8, 0, 0.15, 0}},
+        ["Level"] = {2, "Current Level: 0"},
+        ["Room"]  = {3, "Current Room: 0"},
+        ["Status"]= {4, "Status: Starting..."},
+        ["Huges"] = {5, "Session Huges: 0"},
+        ["Eggs"]  = {6, "Eggs Hatched: 0"}
+    }
+})
 
 local Workspace = game:GetService("Workspace")
-task.spawn(function()
-    while task.wait(0.5) do
-        FpsStat:Update(math.floor(Workspace:GetRealPhysicsFPS()))
-    end
-end)
-
-local DEBUG_BREAKABLES = true
-
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local VirtualUser = game:GetService("VirtualUser")
@@ -272,7 +221,6 @@ local mainfound = false
 local chestsPos = {}
 local eggs = {}
 local mainPos = Vector3.new(0,0,0)
-local totalRaidsCompleted = 0
 
 pcall(function()
     Player.PlayerScripts.Scripts.Core["Server Closing"].Enabled = false
@@ -299,10 +247,6 @@ local MasteryCmds = require(Library.Client.MasteryCmds)
 local CalcEggPrice = require(Library.Balancing.CalcEggPrice)
 local EventUpgrades = require(Library.Directory.EventUpgrades)
 local Eggs_Directory = require(Library.Directory.Eggs)
-local FruitCmds = require(Library.Client.FruitCmds)
-local ExistCmds = require(Library.Client.ExistCountCmds)
-local RapCmds = require(Library.Client.DevRAPCmds)
-local PetDirectory = require(Library.Directory.Pets)
 
 Network.Fire("Idle Tracking: Stop Timer")
 
@@ -311,28 +255,19 @@ SafePart.Size = Vector3.new(10,1,10)
 SafePart.Anchored = true
 SafePart.CFrame = HumanoidRootPart.CFrame - Vector3.new(0,3,0)
 
-vm:Add("AllBreakables", {}, "table")
-vm:Add("Euids", {}, "table")
-vm:Add("LastUseEuids", {}, "table")
-vm:Add("BreakablesInUse", {}, "table")
-vm:Add("PetIDs", {}, "table")
-vm:Add("BulkAssignments", {})
-vm:Add("current_zone", nil, "string")
-vm:Add("lastZone", nil, "string")
-vm:Add("LeftOnPurpose", false, "boolean")
+local vmInst = vm:new()
+vmInst:Add("AllBreakables", {}, "table")
+vmInst:Add("Euids", {}, "table")
+vmInst:Add("LastUseEuids", {}, "table")
+vmInst:Add("BreakablesInUse", {}, "table")
+vmInst:Add("PetIDs", {}, "table")
+vmInst:Add("BulkAssignments", {})
+vmInst:Add("current_zone", nil, "string")
+vmInst:Add("lastZone", nil, "string")
+vmInst:Add("LeftOnPurpose", false, "boolean")
 
 local destroyedCount = 0
 local lastPrint = os.clock()
-
-local function debugTrack()
-    if not DEBUG_BREAKABLES then return end
-    destroyedCount += 1
-    local now = os.clock()
-    if now - lastPrint >= 1 then
-        destroyedCount = 0
-        lastPrint = now
-    end
-end
 
 local function TeleportPlayer(cf)
     HumanoidRootPart.Anchored = false
@@ -344,20 +279,14 @@ local function EnterInstance(Name)
     local retries = 0
     while InstancingCmds.GetInstanceID() ~= Name and retries < 5 do
         pcall(function()
-            setthreadidentity(2)
-            InstancingCmds.Enter(Name)
-            setthreadidentity(8)
+            setthreadidentity(2); InstancingCmds.Enter(Name); setthreadidentity(8)
         end)
         task.wait(1)
         retries = retries + 1
     end
 end
 
-task.spawn(function()
-    pcall(function()
-        Network.Invoke("LuckyRaidUpgrades_Reset")
-    end)
-end)
+task.spawn(function() pcall(function() Network.Invoke("LuckyRaidUpgrades_Reset") end) end)
 
 local luckyUpgrades = {}
 for upgradeId, data in next, EventUpgrades do
@@ -375,20 +304,17 @@ local function PurchaseUpgrades()
         if cfg.enabled ~= false and cfg.required then
             local currentTier = EventUpgradeCmds.GetTier(id)
             if currentTier < (cfg.priority_upgrade or 1) then
-                allRequiredDone = false
-                break
+                allRequiredDone = false; break
             end
         end
     end
 
     local bestUpgrade = nil; local bestPriority = math.huge; local bestCost = math.huge
-
     for id, cfg in pairs(Config) do
         if cfg.enabled == false then continue end
         local currentTier = EventUpgradeCmds.GetTier(id)
         local maxTier = cfg.maxTier or 99
         local priority = cfg.priority or 99
-        
         if currentTier >= maxTier then continue end
         if not allRequiredDone and (not cfg.required or currentTier >= (cfg.priority_upgrade or maxTier)) then continue end
 
@@ -398,29 +324,27 @@ local function PurchaseUpgrades()
         if not nextTierData or not nextTierData._data then continue end
         
         local cost = nextTierData._data._am or 1
-        
         if currentOrbs >= cost then
             if priority < bestPriority or (priority == bestPriority and cost < bestCost) then
                 bestPriority = priority; bestCost = cost; bestUpgrade = id
             end
         end
     end
-
-    if bestUpgrade then EventUpgradeCmds.Purchase(bestUpgrade) end
+    if bestUpgrade then pcall(function() EventUpgradeCmds.Purchase(bestUpgrade) end) end
     return bestUpgrade
 end
 
 local function onBreakablesDestroyed(data)
     if type(data) == "string" then
-        local allBreakables = vm:Get("AllBreakables")
-        if allBreakables[data] and allBreakables[data].Part then allBreakables[data].Part:Destroy(); debugTrack() end
-        vm:TableSet("AllBreakables", data, nil); vm:TableSet("BreakablesInUse", data, nil)
+        local allBreakables = vmInst:Get("AllBreakables")
+        if allBreakables[data] and allBreakables[data].Part then allBreakables[data].Part:Destroy() end
+        vmInst:TableSet("AllBreakables", data, nil); vmInst:TableSet("BreakablesInUse", data, nil)
     elseif type(data) == "table" then
-        local allBreakables = vm:Get("AllBreakables")
+        local allBreakables = vmInst:Get("AllBreakables")
         for _, breakable in pairs(data) do
             local id = breakable[1]
-            if allBreakables[id] and allBreakables[id].Part then allBreakables[id].Part:Destroy(); debugTrack() end
-            vm:TableSet("AllBreakables", id, nil); vm:TableSet("BreakablesInUse", id, nil)
+            if allBreakables[id] and allBreakables[id].Part then allBreakables[id].Part:Destroy() end
+            vmInst:TableSet("AllBreakables", id, nil); vmInst:TableSet("BreakablesInUse", id, nil)
         end
     end
 end
@@ -429,14 +353,9 @@ local function onBreakablesCreated(data)
     for _, breakableData in pairs(data) do
         if not breakableData[1] or not breakableData[1].u then continue end
         local key = tostring(breakableData[1].u)
-        local allBreakables = vm:Get("AllBreakables")
+        local allBreakables = vmInst:Get("AllBreakables")
         if not allBreakables[key] then
-            if DEBUG_BREAKABLES then
-                local Part = Instance.new("Part", Workspace)
-                Part.Size = Vector3.new(20, 20, 20); Part.Position = breakableData[1].pos; Part.Color = Color3.new(1,0,0); Part.CanCollide = false; Part.Anchored = true
-                breakableData[1].Part = Part
-            end
-            vm:TableSet("AllBreakables", key, breakableData[1]); vm:TableSet("BreakablesInUse", key, {})
+            vmInst:TableSet("AllBreakables", key, breakableData[1]); vmInst:TableSet("BreakablesInUse", key, {})
         end
     end
 end
@@ -444,7 +363,7 @@ end
 local function onBreakableCleanup(data)
     for _, entry in pairs(data) do
         local key = tostring(entry[1])
-        vm:TableSet("AllBreakables", key, nil); vm:TableSet("BreakablesInUse", key, nil)
+        vmInst:TableSet("AllBreakables", key, nil); vmInst:TableSet("BreakablesInUse", key, nil)
     end
 end
 
@@ -465,7 +384,7 @@ Network.Fired("Orbs: Create"):Connect(function(Orbs)
         local ID = tonumber(v.id)
         if ID then table.insert(Collect, ID) end
     end
-    Network.Fire("Orbs: Collect", Collect)
+    if #Collect > 0 then pcall(function() Network.Fire("Orbs: Collect", Collect) end) end
 end)
 
 Network.Fired("CustomEggs_Updated"):Connect(function(p194)
@@ -476,57 +395,62 @@ Network.Fired("CustomEggs_Updated"):Connect(function(p194)
 		end
 	end
 end)
+
 Network.Fired("CustomEggs_Broadcast"):Connect(function(data)
     local model = THINGS.CustomEggs:WaitForChild(data.uid, 60)
-    eggs[data.uid] = { ["model"] = model, ["position"] = model:GetPivot().Position, ["hatchable"] = data.hatchable, ["renderable"] = data.renderable, ["id"] = data.id, ["uid"] = data.uid, ["dir"] = Eggs_Directory[data.id] }
+    if model then
+        eggs[data.uid] = { ["model"] = model, ["position"] = model:GetPivot().Position, ["hatchable"] = data.hatchable, ["renderable"] = data.renderable, ["id"] = data.id, ["uid"] = data.uid, ["dir"] = Eggs_Directory[data.id] }
+    end
 end)
+
 for uid, data in pairs(CustomEggsCmds.All()) do
     eggs[uid] = { ["model"] = data._model, ["position"] = data._position, ["hatchable"] = data._hatchable, ["renderable"] = data._renderable, ["id"] = data._id, ["uid"] = data._uid, ["dir"] = data._dir }
 end
 
 local function updateEuids()
     if type(PetNetworking.EquippedPets()) ~= "table" then return end
-    vm:TableClear("Euids"); vm:TableClear("PetIDs")
+    vmInst:TableClear("Euids"); vmInst:TableClear("PetIDs")
     for petID, petData in pairs(PetNetworking.EquippedPets()) do
-        vm:TableSet("Euids", petID, petData); vm:TableInsert("PetIDs", petID)
+        vmInst:TableSet("Euids", petID, petData); vmInst:TableInsert("PetIDs", petID)
     end
     local validPets = {}
-    for _, petID in ipairs(vm:Get("PetIDs")) do if vm:Get("Euids")[petID] then table.insert(validPets, petID) end end
-    vm:TableClear("PetIDs"); for _, v in ipairs(validPets) do vm:TableInsert("PetIDs", v) end
+    for _, petID in ipairs(vmInst:Get("PetIDs")) do if vmInst:Get("Euids")[petID] then table.insert(validPets, petID) end end
+    vmInst:TableClear("PetIDs"); for _, v in ipairs(validPets) do vmInst:TableInsert("PetIDs", v) end
 
     Network.Fired("Pets_LocalPetsUpdated"):Connect(function(pets)
         if type(pets) ~= "table" then return end
-        local euids = vm:Get("Euids")
+        local euids = vmInst:Get("Euids")
         for _, v in pairs(pets) do
             if v.ePet and v.ePet.euid and not euids[v.ePet.euid] then
-                vm:TableSet("Euids", v.ePet.euid, v.ePet); vm:TableInsert("PetIDs", v.ePet.euid)
+                vmInst:TableSet("Euids", v.ePet.euid, v.ePet); vmInst:TableInsert("PetIDs", v.ePet.euid)
             end
         end
     end)
     Network.Fired("Pets_LocalPetsUnequipped"):Connect(function(pets)
         if type(pets) ~= "table" then return end
-        for _, petID in pairs(pets) do vm:TableSet("Euids", petID, nil) end
+        for _, petID in pairs(pets) do vmInst:TableSet("Euids", petID, nil) end
         local validPets = {}
-        for _, petID in ipairs(vm:Get("PetIDs")) do if vm:Get("Euids")[petID] then table.insert(validPets, petID) end end
-        vm:TableClear("PetIDs"); for _, v in ipairs(validPets) do vm:TableInsert("PetIDs", v) end
+        for _, petID in ipairs(vmInst:Get("PetIDs")) do if vmInst:Get("Euids")[petID] then table.insert(validPets, petID) end end
+        vmInst:TableClear("PetIDs"); for _, v in ipairs(validPets) do vmInst:TableInsert("PetIDs", v) end
     end)
 end
 updateEuids()
 
+-- TỐI ƯU TỐC ĐỘ NÉM THÚ CƯNG
 task.spawn(function()
     local breakableOffset = 0
     while true do
         task.wait()
-        vm:Set("current_zone", InstancingCmds.GetInstanceID() or MapCmds.GetCurrentZone())
+        vmInst:Set("current_zone", InstancingCmds.GetInstanceID() or MapCmds.GetCurrentZone())
         local availableBreakables = {}
-        for key, info in pairs(vm:Get("AllBreakables")) do
-            if info.pid == vm:Get("current_zone") and info.id ~= "Ice Block" then table.insert(availableBreakables, key) end
+        for key, info in pairs(vmInst:Get("AllBreakables")) do
+            if info.pid == vmInst:Get("current_zone") and info.id ~= "Ice Block" then table.insert(availableBreakables, key) end
         end
 
         if #availableBreakables > 0 then
-            local now = os.clock(); local lastUseEuids = vm:Get("LastUseEuids"); local bulkAssignments = {}
-            for i, petID in ipairs(vm:Get("PetIDs")) do
-                if vm:Get("Euids")[petID] then
+            local now = os.clock(); local lastUseEuids = vmInst:Get("LastUseEuids"); local bulkAssignments = {}
+            for i, petID in ipairs(vmInst:Get("PetIDs")) do
+                if vmInst:Get("Euids")[petID] then
                     local lastData = lastUseEuids[petID]
                     local blockedKey = (lastData and (now - lastData.time < 1)) and lastData.breakableKey or nil
                     local filtered = {}
@@ -534,7 +458,7 @@ task.spawn(function()
                     
                     local pool = filtered
                     if #filtered == 0 then
-                        local oldestKey = nil; local oldestTime = math.huge; local lastUseEuidsAll = vm:Get("LastUseEuids")
+                        local oldestKey = nil; local oldestTime = math.huge; local lastUseEuidsAll = vmInst:Get("LastUseEuids")
                         for _, key in ipairs(availableBreakables) do
                             local lastUsed = -math.huge
                             for _, data in pairs(lastUseEuidsAll) do if data.breakableKey == key and data.time > lastUsed then lastUsed = data.time end end
@@ -544,95 +468,64 @@ task.spawn(function()
                     end
                 
                     bulkAssignments[petID] = pool[((i - 1 + breakableOffset) % #pool) + 1]
-                    vm:TableSet("LastUseEuids", petID, { time = now, breakableKey = pool[((i - 1 + breakableOffset) % #pool) + 1] })
+                    vmInst:TableSet("LastUseEuids", petID, { time = now, breakableKey = pool[((i - 1 + breakableOffset) % #pool) + 1] })
                 end
             end
 
             if next(bulkAssignments) then
-                -- [SPEED OPTIMIZATION]: Ném pet siêu tốc độ (giảm chờ từ 0.2 xuống 0.1)
-                task.spawn(function() Network.Fire("Breakables_JoinPetBulk", bulkAssignments) end)
-                task.wait(0.1) 
+                task.spawn(function() pcall(function() Network.Fire("Breakables_JoinPetBulk", bulkAssignments) end) end)
+                task.wait(0.1) -- Giảm delay để đánh nhanh hơn
             end
             breakableOffset = breakableOffset + 1
         else
-            vm:Set("current_zone", nil); breakableOffset = 0
+            vmInst:Set("current_zone", nil); breakableOffset = 0
         end
     end
 end)
 
-local function FormatRap(int)
-    local Suffix = {"", "k", "M", "B", "T", "Qd", "Qn", "Sx"}
-    local Index = 1
-    int = tonumber(int) or 0
-    if int < 999 then return tostring(int) end
-    while int >= 1000 and Index < #Suffix do
-        int = int / 1000
-        Index = Index + 1
-    end
-    return string.format("%.2f%s", int, Suffix[Index])
-end
-
-local function GetAsset(Id, pt)
-    local Asset = PetDirectory[Id]
-    local icon = Asset and (pt == 1 and Asset.goldenThumbnail or Asset.thumbnail) or "14976456685"
-    return string.gsub(icon, "rbxassetid://", "")
-end
-
-local function GetStats(Cmds, Class, ItemTable)
-    local success, result = pcall(function()
-        return Cmds.Get({
-            Class = { Name = Class },
-            IsA = function(InputClass) return InputClass == Class end,
-            GetId = function() return ItemTable.id end,
-            StackKey = function() return game:GetService("HttpService"):JSONEncode({id = ItemTable.id, sh = ItemTable.sh, pt = ItemTable.pt, tn = ItemTable.tn}) end
-        })
-    end)
-    return success and result or 0
-end
-
+-- WEBHOOK CƠ BẢN
 task.spawn(function()
     local Data = Save.Get()
     local StartEggs = Data.EggsHatched or 0
     local discovered_Huge_titan = {}
     local localPlayer = game:GetService("Players").LocalPlayer
-    local totalhuges = 0; local totaltitanics = 0
+    local totalhuges = 0
 
-    local function triggerWebhook(data, url, isPublic)
-        if not url or url == "" then return end
-        
-        local Id = data.id; local pt = data.pt; local sh = data.sh
-        local isTitanic = string.find(Id, "Titanic") or string.find(Id, "titanic")
-        local isRainbow = pt == 2; local isGolden = pt == 1
-        local Version = isGolden and "Golden " or isRainbow and "Rainbow " or ""
-        local Title = string.format("||%s|| Obtained a %s%s%s", isPublic and "Someone" or localPlayer.Name, Version, sh and "Shiny " or "", Id)
+    local function getPetLabel(data)
+        local prefix = ""
+        if data.sh then prefix = "Shiny " end
+        if data.pt == 1 then prefix = prefix .. "Golden " elseif data.pt == 2 then prefix = prefix .. "Rainbow " end
+        return prefix .. data.id
+    end
 
-        local Img = string.format("https://biggamesapi.io/image/%s", GetAsset(Id, pt))
-        local Exist = GetStats(ExistCmds, "Pet", { id = Id, pt = pt, sh = sh, tn = data.tn })
-        local Rap = GetStats(RapCmds, "Pet", { id = Id, pt = pt, sh = sh, tn = data.tn })
-        local color = isRainbow and 11141375 or isGolden and 16766720 or sh and 4031935 or isTitanic and 16711680 or 16776960
+    local function sendWebhook(data)
+        if not Webhook or not Webhook.url or Webhook.url == "" then return end
+        local isTitanic = string.find(data.id, "Titanic") or string.find(data.id, "titanic")
+        local isShiny = data.sh; local isRainbow = data.pt == 2; local isGolden = data.pt == 1
+        local color = isRainbow and 11141375 or isGolden and 16766720 or isShiny and 4031935 or isTitanic and 16711680 or 16776960
 
         local pingText = ""
-        if not isPublic and Webhook["Discord Id to ping"] then
+        if Webhook["Discord Id to ping"] then
             local ids = Webhook["Discord Id to ping"]
             if type(ids) == "table" then 
-                for _, pid in ipairs(ids) do if tostring(pid) ~= "" and tostring(pid) ~= "0" then pingText = pingText .. "<@" .. tostring(pid) .. "> " end end 
+                for _, id in ipairs(ids) do if tostring(id) ~= "" and tostring(id) ~= "0" then pingText = pingText .. "<@" .. tostring(id) .. "> " end end 
             elseif tostring(ids) ~= "" and tostring(ids) ~= "0" then pingText = "<@" .. tostring(ids) .. ">" end
         end
 
         local body = game:GetService("HttpService"):JSONEncode({
             content = pingText ~= "" and pingText or nil,
             embeds = {{
-                title = isTitanic and "✨ Titanic Hatched!" or "🎉 Huge Hatched!", description = Title, color = color,
-                timestamp = DateTime.now():ToIsoDate(), thumbnail = { url = Img },
-                fields = { { name = string.format("💎 Rap: ``%s`` \n💫 Exist: ``%s``", FormatRap(Rap or 0), FormatRap(Exist or 0)), value = "" } },
-                footer = { text = "Eggs hatched: " .. tostring(Save.Get().EggsHatched - StartEggs) }
+                title = isTitanic and "✨ Titanic Hatched!" or "🎉 Huge Hatched!",
+                description = "**" .. localPlayer.Name .. "** hatched a **" .. getPetLabel(data) .. "**",
+                color = color,
+                footer = { text = "Eggs hatched: " .. tostring(Data.EggsHatched - StartEggs) }
             }}
         })
-        pcall(function() request({Url = url, Method = "POST", Headers = { ["Content-Type"] = "application/json" }, Body = body}) end)
+        pcall(function() request({Url = Webhook.url, Method = "POST", Headers = { ["Content-Type"] = "application/json" }, Body = body}) end)
     end
 
     for UUID, data in pairs(Data.Inventory.Pet or {}) do
-        if string.find(data.id, "Huge") or string.find(data.id, "Titanic") or string.find(data.id, "titanic") or string.find(data.id, "Gargantuan") then
+        if string.find(data.id, "Huge") or string.find(data.id, "Titanic") or string.find(data.id, "titanic") then
             discovered_Huge_titan[UUID] = true
         end
     end
@@ -640,28 +533,22 @@ task.spawn(function()
     while task.wait() do
         Data = Save.Get()
         for UUID, data in pairs(Data.Inventory.Pet or {}) do
-            if string.find(data.id, "Huge") or string.find(data.id, "Titanic") or string.find(data.id, "titanic") or string.find(data.id, "Gargantuan") then
+            if string.find(data.id, "Huge") or string.find(data.id, "Titanic") or string.find(data.id, "titanic") then
                 if not discovered_Huge_titan[UUID] then
                     discovered_Huge_titan[UUID] = true
-                    if Webhook and Webhook.url ~= "" then pcall(triggerWebhook, data, Webhook.url, false) end
-                    pcall(triggerWebhook, data, "https://discord.com/api/webhooks/1482507332314337320/Rj5lkopsxqfuD8LC8_MAfMNKnDLowoWeKsoKQoBKHqphRQO3VuTxleVXSIYgyV8DfvxA", true)
-                    
-                    if string.find(data.id, "Titanic") or string.find(data.id, "titanic") then
-                        totaltitanics = totaltitanics + 1
-                        task.defer(function() TitanicStat:Update(totaltitanics) end)
-                    else
-                        totalhuges = totalhuges + 1
-                        task.defer(function() HugeStat:Update(totalhuges) end)
-                    end
+                    pcall(sendWebhook, data)
+                    totalhuges = totalhuges + 1
+                    UI:SetText("Huges", "Session Huges: " .. tostring(totalhuges))
                 end
             end
         end
-        task.defer(function() TotalEggsOpened:Update(utils:FormatNumber(Data.EggsHatched - StartEggs)) end)
+        UI:SetText("Eggs", "Eggs Hatched: " .. UI:Format(Data.EggsHatched - StartEggs))
         PurchaseUpgrades()
         pcall(function() Network.Invoke("Mailbox: Claim All") end)
     end
 end)
 
+-- LOGIC AUTO BOSS (DỰA THEO SETTINGS)
 local function OpenBossRooms(CurrentRaid)
     if not CurrentRaid then return end
     local BossSettings = Raid["Boss Settings"]
@@ -674,187 +561,149 @@ local function OpenBossRooms(CurrentRaid)
         if not table.find(targetBosses, bossName) then continue end
         
         if BossSettings.UpgradeBossChests then
-            local created = Network.Invoke("LuckyRaid_PullLever", v.BossNumber)
-            if created then task.defer(function() StatusStat:Update("Upgraded " .. bossName .. " Chest...") end); task.wait(0.25) end
+            local created
+            pcall(function() created = Network.Invoke("LuckyRaid_PullLever", v.BossNumber) end)
+            if created then UI:SetText("Status", "Status: Upgraded " .. bossName .. " Chest..."); task.wait(0.25) end
         end
         
         if v.BossNumber == 3 and Items.Misc("Lucky Raid Boss Key V2"):CountExact() < 1 then continue end
-        local timer = os.time()
+        local timer = os.clock()
         local Success, Error
         repeat 
             task.wait()
-            pcall(function()
-                Success, Error = Network.Invoke("Raids_StartBoss", v.BossNumber) 
-            end)
-        until Success or Error or os.time() - timer >= 5
+            pcall(function() Success, Error = Network.Invoke("Raids_StartBoss", v.BossNumber) end)
+        until Success or Error or os.clock() - timer >= 3
     end
 end
 
 Network.Fired("Raid: Spawned Room"):Connect(function(RoomNumber)
-    task.defer(function() RoomStat:Update(RoomNumber) end)
+    UI:SetText("Room", "Current Room: " .. tostring(RoomNumber))
     pcall(function() Network.Invoke("LuckyRaidBossKey_Combine",1) end)
 end)
 
 HumanoidRootPart.Anchored = true
 EnterInstance("LuckyEventWorld")
 
-task.spawn(function()
-    local targetStack = 20
-    local function ManageFruits()
-        local fruitInv = Save.Get().Inventory.Fruit
-        if not fruitInv then return end
-        local fruitUids = {}
-        for uid, data in pairs(fruitInv) do
-            if data.id and data.id ~= "Candycane" then
-                if not fruitUids[data.id] or (data._am and data._am > (fruitInv[fruitUids[data.id]]._am or 1)) then fruitUids[data.id] = uid end
-            end
-        end
-        local activeFruits = FruitCmds.GetActiveFruits()
-        for fruitName, uid in pairs(fruitUids) do
-            local activeData = activeFruits[fruitName]
-            local currentStack = activeData and #activeData or 0
-            if currentStack < targetStack then
-                pcall(function() Network.Invoke("Fruits: Consume", uid, targetStack - currentStack) end)
-                task.wait(0.15)
-            end
-        end
-    end
-    ManageFruits()
-    Network.Fired("Fruits: Update"):Connect(function() task.wait(1); ManageFruits() end)
-end)
-
-while task.wait() do
-    if not Raid.Enabled then 
-        task.defer(function() StatusStat:Update("Auto is PAUSED...") end)
-        task.wait(1)
-        continue 
-    end
-
-    local CurrentRaid = RaidInstance.GetByOwner(Player)
-    if not CurrentRaid or vm:Get("LeftOnPurpose") then
-        vm:Set("LeftOnPurpose", false)
-        local Level = RaidCmds.GetLevel()
-        task.defer(function() LevelStat:Update(Level); StatusStat:Update("Creating Raid...") end)
-        
-        local OpenPortal;
-        for i = 1,10 do
-            local Portal = RaidInstance.GetByPortal(i)
-            if not Portal or (Portal and Portal._owner == game.Players.LocalPlayer) then OpenPortal = i; break end
-        end
-        pcall(function() Network.Fire("Instancing_PlayerLeaveInstance", "LuckyRaid") end)
-        pcall(function() Network.Invoke("Raids_RequestCreate", { ["Difficulty"] = (type(Raid.Difficulty) == "number" and Level >= Raid.Difficulty and Raid.Difficulty) or Level, ["Portal"] = OpenPortal, ["PartyMode"] = 1 }) end)
-        task.wait()
-    end
-
-    repeat task.wait(0.25); CurrentRaid = RaidInstance.GetByOwner(Player) until CurrentRaid or not Raid.Enabled
-    if not Raid.Enabled then continue end
-
-    if CurrentRaid then
-        task.defer(function() StatusStat:Update("Joining Raid...") end)
-        local RaidID = CurrentRaid._id
-        local Joined = false
-        pcall(function() Joined = Network.Invoke("Raids_Join", RaidID) end)
-        if not Joined then 
-            repeat 
-                pcall(function() Joined = Network.Invoke("Raids_Join", RaidID) end)
-                task.wait(0.5) 
-            until Joined 
-        end
-        task.wait(0.2)
-        
-        repeat task.wait() until __FAKE_INSTANCE_BREAK_ZONES:FindFirstChild("Main", true)
-        __FAKE_INSTANCE_BREAK_ZONES:FindFirstChild("Main", true).CanCollide = true
-        __FAKE_INSTANCE_BREAK_ZONES:FindFirstChild("Main", true):Clone()
-        mainPos = __FAKE_INSTANCE_BREAK_ZONES:FindFirstChild("Main", true).CFrame
-        
-        local completed = false
-        local completedTime = 0
-        local total = 0
-        Network.Fired("Raid: Completed"):Once(function()
-            completed = true
-            completedTime = os.time()
-            totalRaidsCompleted = totalRaidsCompleted + 1
-            task.defer(function() RaidsCompletedStat:Update(totalRaidsCompleted) end)
-        end)
-        
-        repeat
-            if not Raid.Enabled then break end
-            task.wait()
-            OpenBossRooms(RaidInstance.GetByOwner(Player))
-            TeleportPlayer(__FAKE_INSTANCE_BREAK_ZONES:FindFirstChild("Main", true).CFrame + Vector3.new(0,3,0))
+if Raid.Enabled then
+    while task.wait() do
+        local CurrentRaid = RaidInstance.GetByOwner(Player)
+        if not CurrentRaid or vmInst:Get("LeftOnPurpose") then
+            vmInst:Set("LeftOnPurpose", false)
+            local Level = RaidCmds.GetLevel()
+            UI:SetText("Level", "Current Level: " .. tostring(Level))
+            UI:SetText("Status", "Status: Creating Raid...")
             
-            total = 0
-            for key, info in pairs(vm:Get("AllBreakables")) do
-                if (info.pid and info.pid:lower():find("raid")) or (info.id and info.id:lower():find("raid")) then total += 1 end
+            local OpenPortal;
+            for i = 1,10 do
+                local Portal = RaidInstance.GetByPortal(i)
+                if not Portal or (Portal and Portal._owner == game.Players.LocalPlayer) then OpenPortal = i; break end
             end
-            task.defer(function() StatusStat:Update("Farming Breakables..."); BreakablesLeftStat:Update(total) end)
-
-            -- [SPEED OPTIMIZATION]: Ép rời khỏi room sau 5 giây nếu boss/raid đã báo hoàn thành mà gạch đá bị kẹt
-            if completed then 
-                if os.time() - completedTime >= 5 then break end
-            end
-        until completed and total == 0
-        
-        if not Raid.Enabled then continue end
-
-        task.defer(function() StatusStat:Update("Opening Chests...") end)
-        for chestId, chestData in pairs(CurrentRaid._chests) do
-            if chestId:find("Sign") or (chestId:find("Leprechaun") and not Raid.OpenLeprechaunChest) then continue end
-            chestsPos[chestId] = chestData.Model:FindFirstChildOfClass("MeshPart").CFrame
-            if chestData.Opened or not chestData.Model or not chestData.Model:FindFirstChildOfClass("MeshPart") then continue end
-            TeleportPlayer(chestData.Model:FindFirstChildOfClass("MeshPart").CFrame)
-            
-            local success, reason
-            local chestRetries = 0
-            repeat 
-                task.wait()
-                pcall(function() success, reason = Network.Invoke("Raids_OpenChest", chestId) end)
-                chestRetries = chestRetries + 1
-            -- [SPEED OPTIMIZATION]: Chống kẹt rương (Thử tối đa 10 lần)
-            until success or string.find(reason or "tier", "tier") or chestRetries > 10
-        end
-
-        for chestId, cPos in pairs(chestsPos) do
-            TeleportPlayer(cPos)
-            local success, reason
-            local chestRetries = 0
-            repeat 
-                task.wait()
-                pcall(function() success, reason = Network.Invoke("Raids_OpenChest", chestId) end)
-                chestRetries = chestRetries + 1
-            until success or string.find(reason or "tier", "tier") or chestRetries > 10
-        end
-        mainfound = true
-
-        if Raid["Egg Settings"].Enabled and Save.Get().RaidEggMultiplier and Save.Get().RaidEggMultiplier >= Raid["Egg Settings"].MinimumEggMulti and CurrencyCmds.CanAfford("LuckyCoins", Raid["Egg Settings"].MinimumLuckyCoins) then
             pcall(function() Network.Fire("Instancing_PlayerLeaveInstance", "LuckyRaid") end)
-            task.wait(0.1)
-            pcall(function() Network.Invoke("Instancing_PlayerEnterInstance", "LuckyEgg") end)
-            TeleportPlayer(CFrame.new(3443, -167, 3534))
-            local LuckyEgg, EggPrice, EggPosition
-            repeat task.wait()
-                for UID, data in pairs(eggs) do
-                    if not (data.hatchable and data.renderable and data.position) then continue end
-                    local Power = EventUpgradeCmds.GetPower("LuckyRaidEggCost")
-                    local CheaperEggs = MasteryCmds.HasPerk("Eggs", "CheaperEggs") and MasteryCmds.GetPerkPower("Eggs", "CheaperEggs") or 0
-                    EggPrice = CalcEggPrice(data.dir) * (1 - Power / 100) * (1 - CheaperEggs / 100)
-                    LuckyEgg = UID; EggPosition = data.position; break
-                end
-            until LuckyEgg and EggPrice
-
-            local StartingTime = os.time()
-            local MaxEggHatch = EggCmds.GetMaxHatch()
-            local NeedsPrice = EggPrice * MaxEggHatch
-            local multiplier = Save.Get().RaidEggMultiplier
-        
-            task.defer(function() StatusStat:Update(string.format("Hatching Raid Egg | x%s", multiplier)) end)
-        
-            repeat task.wait()
-                if not Raid.Enabled then break end
-                pcall(function() Network.Invoke("CustomEggs_Hatch", LuckyEgg, MaxEggHatch) end)
-                TeleportPlayer(CFrame.new(EggPosition))
-            until not CurrencyCmds.CanAfford("LuckyCoins", NeedsPrice) or (os.time() - StartingTime) >= (Raid["Egg Settings"].MaxOpenTime * 60)
+            pcall(function() Network.Invoke("Raids_RequestCreate", { ["Difficulty"] = (type(Raid.Difficulty) == "number" and Level >= Raid.Difficulty and Raid.Difficulty) or Level, ["Portal"] = OpenPortal, ["PartyMode"] = 1 }) end)
+            task.wait()
         end
-        vm:Set("LeftOnPurpose", true)
+
+        repeat task.wait(0.25); CurrentRaid = RaidInstance.GetByOwner(Player) until CurrentRaid
+
+        if CurrentRaid then
+            UI:SetText("Status", "Status: Joining Raid...")
+            local RaidID = CurrentRaid._id
+            local Joined = false
+            pcall(function() Joined = Network.Invoke("Raids_Join", RaidID) end)
+            if not Joined then 
+                repeat 
+                    task.wait(0.5)
+                    pcall(function() Joined = Network.Invoke("Raids_Join", RaidID) end)
+                until Joined 
+            end
+            task.wait(0.2)
+            
+            repeat task.wait() until __FAKE_INSTANCE_BREAK_ZONES:FindFirstChild("Main", true)
+            __FAKE_INSTANCE_BREAK_ZONES:FindFirstChild("Main", true).CanCollide = true
+            mainPos = __FAKE_INSTANCE_BREAK_ZONES:FindFirstChild("Main", true).CFrame
+            
+            local completed = false
+            local completedTime = 0
+            local total = 0
+            Network.Fired("Raid: Completed"):Once(function()
+                completed = true
+                completedTime = os.clock()
+            end)
+            
+            UI:SetText("Status", "Status: Farming Breakables...")
+            repeat
+                task.wait()
+                OpenBossRooms(RaidInstance.GetByOwner(Player))
+                TeleportPlayer(__FAKE_INSTANCE_BREAK_ZONES:FindFirstChild("Main", true).CFrame + Vector3.new(0,3,0))
+                
+                total = 0
+                for key, info in pairs(vmInst:Get("AllBreakables")) do
+                    if (info.pid and info.pid:lower():find("raid")) or (info.id and info.id:lower():find("raid")) then total += 1 end
+                end
+                
+                -- TỐI ƯU TỐC ĐỘ: Ép dừng đập gạch sau 3s nếu Raid báo xong
+                if completed and os.clock() - completedTime >= 3 then break end
+            until completed and total == 0
+
+            UI:SetText("Status", "Status: Opening Chests...")
+            for chestId, chestData in pairs(CurrentRaid._chests) do
+                if chestId:find("Sign") or (chestId:find("Leprechaun") and not Raid.OpenLeprechaunChest) then continue end
+                chestsPos[chestId] = chestData.Model:FindFirstChildOfClass("MeshPart").CFrame
+                if chestData.Opened or not chestData.Model or not chestData.Model:FindFirstChildOfClass("MeshPart") then continue end
+                TeleportPlayer(chestData.Model:FindFirstChildOfClass("MeshPart").CFrame)
+                
+                local success, reason
+                local chestRetries = 0
+                repeat 
+                    task.wait()
+                    pcall(function() success, reason = Network.Invoke("Raids_OpenChest", chestId) end)
+                    chestRetries = chestRetries + 1
+                -- TỐI ƯU TỐC ĐỘ: Chống kẹt Rương (thử tối đa 10 lần ~ 0.5s)
+                until success or string.find(reason or "tier", "tier") or chestRetries > 10
+            end
+
+            for chestId, cPos in pairs(chestsPos) do
+                TeleportPlayer(cPos)
+                local success, reason
+                local chestRetries = 0
+                repeat 
+                    task.wait()
+                    pcall(function() success, reason = Network.Invoke("Raids_OpenChest", chestId) end)
+                    chestRetries = chestRetries + 1
+                until success or string.find(reason or "tier", "tier") or chestRetries > 10
+            end
+            
+            mainfound = true
+
+            if Raid["Egg Settings"].Enabled and Save.Get().RaidEggMultiplier and Save.Get().RaidEggMultiplier >= Raid["Egg Settings"].MinimumEggMulti and CurrencyCmds.CanAfford("LuckyCoins", Raid["Egg Settings"].MinimumLuckyCoins) then
+                pcall(function() Network.Fire("Instancing_PlayerLeaveInstance", "LuckyRaid") end)
+                task.wait(0.1)
+                pcall(function() Network.Invoke("Instancing_PlayerEnterInstance", "LuckyEgg") end)
+                TeleportPlayer(CFrame.new(3443, -167, 3534))
+                local LuckyEgg, EggPrice, EggPosition
+                repeat task.wait()
+                    for UID, data in pairs(eggs) do
+                        if not (data.hatchable and data.renderable and data.position) then continue end
+                        local Power = EventUpgradeCmds.GetPower("LuckyRaidEggCost")
+                        local CheaperEggs = MasteryCmds.HasPerk("Eggs", "CheaperEggs") and MasteryCmds.GetPerkPower("Eggs", "CheaperEggs") or 0
+                        EggPrice = CalcEggPrice(data.dir) * (1 - Power / 100) * (1 - CheaperEggs / 100)
+                        LuckyEgg = UID; EggPosition = data.position; break
+                    end
+                until LuckyEgg and EggPrice
+
+                local StartingTime = os.time()
+                local MaxEggHatch = EggCmds.GetMaxHatch()
+                local NeedsPrice = EggPrice * MaxEggHatch
+                local multiplier = Save.Get().RaidEggMultiplier
+            
+                UI:SetText("Status", "Status: Hatching Egg | x" .. tostring(multiplier))
+            
+                repeat task.wait()
+                    pcall(function() Network.Invoke("CustomEggs_Hatch", LuckyEgg, MaxEggHatch) end)
+                    TeleportPlayer(CFrame.new(EggPosition))
+                until not CurrencyCmds.CanAfford("LuckyCoins", NeedsPrice) or (os.time() - StartingTime) >= (Raid["Egg Settings"].MaxOpenTime * 60)
+            end
+            vmInst:Set("LeftOnPurpose", true)
+        end
     end
 end
