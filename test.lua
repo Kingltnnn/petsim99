@@ -59,7 +59,7 @@ end
 local vm = load("https://raw.githubusercontent.com/Paule1248/Open-Source/refs/heads/main/Utils/VariablesManager", "VariablesManager.lua")
 
 --====================================================================--
---//                   PIRA UI LIBRARY (ORIGINAL MODDED)            //--
+--//                   PIRA UI FULLSCREEN (THEO MẪU ẢNH)            //--
 --====================================================================--
 local FarmUI = {}
 FarmUI.__index = FarmUI
@@ -67,8 +67,7 @@ FarmUI.__index = FarmUI
 function FarmUI.new(Config)
 	local Self = setmetatable({}, FarmUI)
 	Self.Player = game.Players.LocalPlayer
-	Self.GuiName = "PiraScreenGui"
-	Self.Logo = ""
+	Self.GuiName = "PiraFullscreenGui"
 	Self.Elements = {}
 	Self.Parent = game:GetService("CoreGui")
 	
@@ -79,23 +78,15 @@ function FarmUI.new(Config)
 	ScreenGui.ResetOnSpawn = false
 	Self.ScreenGui = ScreenGui
 
-    -- MÀN HÌNH ĐEN CHÍNH
+    -- MÀN HÌNH ĐEN TOÀN MÀN HÌNH
 	local Background = Instance.new("Frame")
 	Background.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 	Background.BorderColor3 = Color3.fromRGB(255, 0, 255)
 	Background.BorderMode = Enum.BorderMode.Inset
 	Background.Parent = ScreenGui
-	Background.Size = UDim2.new(0.2, 0, 0.25, 0)
+	Background.Size = UDim2.new(1, 0, 1, 0)
 	Background.Position = UDim2.new(0.5, 0, 0.5, 0)
 	Background.AnchorPoint = Vector2.new(0.5, 0.5)
-
-	local Logo = Instance.new("ImageLabel")
-	Logo.Position = UDim2.new(0.02, 0, 0.05, 0)
-	Logo.BackgroundTransparency = 1
-	Logo.Image = Self.Logo
-	Logo.Size = UDim2.new(0.15, 0, 0.2, 0)
-	Logo.Parent = Background
-	Instance.new("UIAspectRatioConstraint", Logo).AspectRatio = 1
 
 	local Container = Instance.new("Frame")
 	Container.Size = UDim2.new(1, 0, 1, 0)
@@ -104,17 +95,17 @@ function FarmUI.new(Config)
 	Self.Container = Container
 
 	local Layout = Instance.new("UIListLayout")
-	Layout.Padding = UDim.new(0.02, 0)
+	Layout.Padding = UDim.new(0.015, 0)
 	Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	Layout.VerticalAlignment = Enum.VerticalAlignment.Center
 	Layout.SortOrder = Enum.SortOrder.LayoutOrder
 	Layout.Parent = Container
 
-    -- NÚT TẮT BẬT MÀN HÌNH (TOGGLE BUTTON)
+    -- NÚT TẮT BẬT MÀN HÌNH
     local ToggleBtn = Instance.new("TextButton")
     ToggleBtn.Size = UDim2.new(0, 45, 0, 45)
-    ToggleBtn.Position = UDim2.new(1, -15, 0.5, 0) -- Nằm ở mép giữa bên phải
-    ToggleBtn.AnchorPoint = Vector2.new(1, 0.5)
+    ToggleBtn.Position = UDim2.new(1, -20, 1, -20)
+    ToggleBtn.AnchorPoint = Vector2.new(1, 1)
     ToggleBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
     ToggleBtn.Text = "👁"
     ToggleBtn.TextSize = 22
@@ -134,25 +125,6 @@ function FarmUI.new(Config)
         ToggleBtn.Text = Background.Visible and "👁" or "🙈"
     end)
 
-	local Dragging, DragInput, DragStart, StartPos
-	Background.InputBegan:Connect(function(Input)
-		if Input.UserInputType == Enum.UserInputType.MouseButton1 then
-			Dragging = true
-			DragStart = Input.Position
-			StartPos = Background.Position
-			Input.Changed:Connect(function() if Input.UserInputState == Enum.UserInputState.End then Dragging = false end end)
-		end
-	end)
-	Background.InputChanged:Connect(function(Input)
-		if Input.UserInputType == Enum.UserInputType.MouseMovement then DragInput = Input end
-	end)
-	game:GetService("UserInputService").InputChanged:Connect(function(Input)
-		if Input == DragInput and Dragging then
-			local Delta = Input.Position - DragStart
-			Background.Position = UDim2.new(StartPos.X.Scale, StartPos.X.Offset + Delta.X, StartPos.Y.Scale, StartPos.Y.Offset + Delta.Y)
-		end
-	end)
-
 	local Sorted = {}
 	for Name, Data in pairs(Config.UI) do table.insert(Sorted, {Name = Name, Order = Data[1], Text = Data[2], Size = Data[3]}) end
 	table.sort(Sorted, function(A, B) return A.Order < B.Order end)
@@ -161,7 +133,8 @@ function FarmUI.new(Config)
 		local Label = Instance.new("TextLabel")
 		Label.Name = Item.Name
 		Label.LayoutOrder = Item.Order
-		Label.Size = Item.Size and UDim2.new(unpack(Item.Size)) or UDim2.new(0.7, 0, 0.1, 0)
+        -- Thiết lập tỷ lệ kích thước chữ chuẩn cho Fullscreen
+		Label.Size = Item.Size and UDim2.new(unpack(Item.Size)) or UDim2.new(0.6, 0, 0.045, 0)
 		Label.BackgroundTransparency = 1
 		Label.Font = Enum.Font.FredokaOne
 		Label.Text = Item.Text
@@ -174,7 +147,7 @@ function FarmUI.new(Config)
 			local Spacer = Instance.new("Frame")
 			Spacer.LayoutOrder = Item.Order + 0.5
 			Spacer.BackgroundColor3 = Color3.fromRGB(255, 0, 255)
-			Spacer.Size = UDim2.new(0.5, 0, 0, 1)
+			Spacer.Size = UDim2.new(0.4, 0, 0, 2)
 			Spacer.Parent = Self.Container
 		end
 	end
@@ -194,18 +167,41 @@ function FarmUI:Format(Int)
 end
 
 --====================================================================--
+-- TẠO GIAO DIỆN VỚI ĐẦY ĐỦ THÔNG SỐ NHƯ BỨC ẢNH
 local UI = FarmUI.new({
     UI = {
-        ["Title"] = {1, "🌟 AUTO LUCKY RAID", {0.8, 0, 0.15, 0}},
-        ["Level"] = {2, "Current Level: 0"},
-        ["Room"]  = {3, "Current Room: 0"},
-        ["Status"]= {4, "Status: Starting..."},
-        ["Huges"] = {5, "Session Huges: 0"},
-        ["Eggs"]  = {6, "Eggs Hatched: 0"}
+        ["Title"]           = {1, "🌟 AUTO LUCKY RAID", {0.8, 0, 0.08, 0}},
+        ["Status"]          = {2, "Status: Starting..."},
+        ["Level"]           = {3, "Current Level: 0"},
+        ["Room"]            = {4, "Current Room: 0"},
+        ["BreakablesLeft"]  = {5, "Total Breakables Left: 0"},
+        ["RaidsCompleted"]  = {6, "Total Raids Completed: 0"},
+        ["Huges"]           = {7, "Session Huges: 0"},
+        ["Titanics"]        = {8, "Session Titanics: 0"},
+        ["Eggs"]            = {9, "Total Eggs Hatched: 0"},
+        ["TimeFarmed"]      = {10, "Time Farmed: 00:00:00"},
+        ["FPS"]             = {11, "FPS: 60"}
     }
 })
 
+-- BỘ ĐẾM THỜI GIAN VÀ FPS CHẠY NGẦM
+local scriptStartTime = os.time()
+task.spawn(function()
+    while task.wait(1) do
+        local elapsed = os.time() - scriptStartTime
+        local h = math.floor(elapsed / 3600); local m = math.floor((elapsed % 3600) / 60); local s = elapsed % 60
+        UI:SetText("TimeFarmed", string.format("Time Farmed: %02d:%02d:%02d", h, m, s))
+    end
+end)
+
 local Workspace = game:GetService("Workspace")
+task.spawn(function()
+    while task.wait(0.5) do
+        UI:SetText("FPS", "FPS: " .. math.floor(Workspace:GetRealPhysicsFPS()))
+    end
+end)
+
+local DEBUG_BREAKABLES = true
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local VirtualUser = game:GetService("VirtualUser")
@@ -221,6 +217,8 @@ local mainfound = false
 local chestsPos = {}
 local eggs = {}
 local mainPos = Vector3.new(0,0,0)
+local totalRaidsCompleted = 0
+local totaltitanics = 0
 
 pcall(function()
     Player.PlayerScripts.Scripts.Core["Server Closing"].Enabled = false
@@ -247,6 +245,7 @@ local MasteryCmds = require(Library.Client.MasteryCmds)
 local CalcEggPrice = require(Library.Balancing.CalcEggPrice)
 local EventUpgrades = require(Library.Directory.EventUpgrades)
 local Eggs_Directory = require(Library.Directory.Eggs)
+local FruitCmds = require(Library.Client.FruitCmds)
 
 Network.Fire("Idle Tracking: Stop Timer")
 
@@ -436,7 +435,6 @@ local function updateEuids()
 end
 updateEuids()
 
--- TỐI ƯU TỐC ĐỘ NÉM THÚ CƯNG
 task.spawn(function()
     local breakableOffset = 0
     while true do
@@ -474,7 +472,7 @@ task.spawn(function()
 
             if next(bulkAssignments) then
                 task.spawn(function() pcall(function() Network.Fire("Breakables_JoinPetBulk", bulkAssignments) end) end)
-                task.wait(0.1) -- Giảm delay để đánh nhanh hơn
+                task.wait(0.1) 
             end
             breakableOffset = breakableOffset + 1
         else
@@ -483,7 +481,6 @@ task.spawn(function()
     end
 end)
 
--- WEBHOOK CƠ BẢN
 task.spawn(function()
     local Data = Save.Get()
     local StartEggs = Data.EggsHatched or 0
@@ -537,18 +534,22 @@ task.spawn(function()
                 if not discovered_Huge_titan[UUID] then
                     discovered_Huge_titan[UUID] = true
                     pcall(sendWebhook, data)
-                    totalhuges = totalhuges + 1
-                    UI:SetText("Huges", "Session Huges: " .. tostring(totalhuges))
+                    if string.find(data.id, "Titanic") or string.find(data.id, "titanic") then
+                        totaltitanics = totaltitanics + 1
+                        UI:SetText("Titanics", "Session Titanics: " .. tostring(totaltitanics))
+                    else
+                        totalhuges = totalhuges + 1
+                        UI:SetText("Huges", "Session Huges: " .. tostring(totalhuges))
+                    end
                 end
             end
         end
-        UI:SetText("Eggs", "Eggs Hatched: " .. UI:Format(Data.EggsHatched - StartEggs))
+        UI:SetText("Eggs", "Total Eggs Hatched: " .. UI:Format(Data.EggsHatched - StartEggs))
         PurchaseUpgrades()
         pcall(function() Network.Invoke("Mailbox: Claim All") end)
     end
 end)
 
--- LOGIC AUTO BOSS (DỰA THEO SETTINGS)
 local function OpenBossRooms(CurrentRaid)
     if not CurrentRaid then return end
     local BossSettings = Raid["Boss Settings"]
@@ -583,6 +584,31 @@ end)
 
 HumanoidRootPart.Anchored = true
 EnterInstance("LuckyEventWorld")
+
+task.spawn(function()
+    local targetStack = 20
+    local function ManageFruits()
+        local fruitInv = Save.Get().Inventory.Fruit
+        if not fruitInv then return end
+        local fruitUids = {}
+        for uid, data in pairs(fruitInv) do
+            if data.id and data.id ~= "Candycane" then
+                if not fruitUids[data.id] or (data._am and data._am > (fruitInv[fruitUids[data.id]]._am or 1)) then fruitUids[data.id] = uid end
+            end
+        end
+        local activeFruits = FruitCmds.GetActiveFruits()
+        for fruitName, uid in pairs(fruitUids) do
+            local activeData = activeFruits[fruitName]
+            local currentStack = activeData and #activeData or 0
+            if currentStack < targetStack then
+                pcall(function() Network.Invoke("Fruits: Consume", uid, targetStack - currentStack) end)
+                task.wait(0.15)
+            end
+        end
+    end
+    ManageFruits()
+    Network.Fired("Fruits: Update"):Connect(function() task.wait(1); ManageFruits() end)
+end)
 
 if Raid.Enabled then
     while task.wait() do
@@ -628,6 +654,8 @@ if Raid.Enabled then
             Network.Fired("Raid: Completed"):Once(function()
                 completed = true
                 completedTime = os.clock()
+                totalRaidsCompleted = totalRaidsCompleted + 1
+                UI:SetText("RaidsCompleted", "Total Raids Completed: " .. tostring(totalRaidsCompleted))
             end)
             
             UI:SetText("Status", "Status: Farming Breakables...")
@@ -640,6 +668,7 @@ if Raid.Enabled then
                 for key, info in pairs(vmInst:Get("AllBreakables")) do
                     if (info.pid and info.pid:lower():find("raid")) or (info.id and info.id:lower():find("raid")) then total += 1 end
                 end
+                UI:SetText("BreakablesLeft", "Total Breakables Left: " .. tostring(total))
                 
                 -- TỐI ƯU TỐC ĐỘ: Ép dừng đập gạch sau 3s nếu Raid báo xong
                 if completed and os.clock() - completedTime >= 3 then break end
