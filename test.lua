@@ -265,7 +265,6 @@ local Player = Players.LocalPlayer
 local Character = Player.Character or Player.CharacterAdded:Wait()
 local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 
--- [FIX 1]: ĐÃ XÓA TÍNH NĂNG CHỐNG LAG LỖI LÀM MÙ MAP (THINGS.Parent = ReplicatedStorage)
 local THINGS = Workspace:FindFirstChild("__THINGS")
 local ActiveInstances = workspace.__THINGS.__INSTANCE_CONTAINER.Active
 local __FAKE_INSTANCE_BREAK_ZONES = workspace.__THINGS.__FAKE_INSTANCE_BREAK_ZONES
@@ -275,15 +274,11 @@ local eggs = {}
 local mainPos = Vector3.new(0,0,0)
 local totalRaidsCompleted = 0
 
-Player.PlayerScripts.Scripts.Core["Server Closing"].Enabled = false
-Player.PlayerScripts.Scripts.Core["Idle Tracking"].Enabled = false
-Player.Idled:Connect(function() VirtualUser:CaptureController(); VirtualUser:ClickButton2(Vector2.new()) end)
-
-task.spawn(function()
-    repeat task.wait(1) until mainfound
-    Workspace.__DEBRIS:Destroy()
-    Player.PlayerScripts:ClearAllChildren()
+pcall(function()
+    Player.PlayerScripts.Scripts.Core["Server Closing"].Enabled = false
+    Player.PlayerScripts.Scripts.Core["Idle Tracking"].Enabled = false
 end)
+Player.Idled:Connect(function() VirtualUser:CaptureController(); VirtualUser:ClickButton2(Vector2.new()) end)
 
 local Library = ReplicatedStorage.Library
 local Network = require(Library.Client.Network)
@@ -345,7 +340,6 @@ local function TeleportPlayer(cf)
     SafePart.CFrame = cf - Vector3.new(0,3,0)
 end
 
--- [FIX 2]: FIX LỖI TREO VÒNG LẶP KHI TÌM MAP
 local function EnterInstance(Name)
     local retries = 0
     while InstancingCmds.GetInstanceID() ~= Name and retries < 5 do
@@ -359,7 +353,6 @@ local function EnterInstance(Name)
     end
 end
 
--- [FIX 3]: BỌC LỆNH GỬI SERVER ĐỂ TRÁNH TREO GAME NẾU SERVER KHÔNG PHẢN HỒI
 task.spawn(function()
     pcall(function()
         Network.Invoke("LuckyRaidUpgrades_Reset")
@@ -556,8 +549,9 @@ task.spawn(function()
             end
 
             if next(bulkAssignments) then
+                -- [SPEED OPTIMIZATION]: Ném pet siêu tốc độ (giảm chờ từ 0.2 xuống 0.1)
                 task.spawn(function() Network.Fire("Breakables_JoinPetBulk", bulkAssignments) end)
-                task.wait(0.2)
+                task.wait(0.1) 
             end
             breakableOffset = breakableOffset + 1
         else
@@ -585,12 +579,15 @@ local function GetAsset(Id, pt)
 end
 
 local function GetStats(Cmds, Class, ItemTable)
-    return Cmds.Get({
-        Class = { Name = Class },
-        IsA = function(InputClass) return InputClass == Class end,
-        GetId = function() return ItemTable.id end,
-        StackKey = function() return game:GetService("HttpService"):JSONEncode({id = ItemTable.id, sh = ItemTable.sh, pt = ItemTable.pt, tn = ItemTable.tn}) end
-    }) or nil
+    local success, result = pcall(function()
+        return Cmds.Get({
+            Class = { Name = Class },
+            IsA = function(InputClass) return InputClass == Class end,
+            GetId = function() return ItemTable.id end,
+            StackKey = function() return game:GetService("HttpService"):JSONEncode({id = ItemTable.id, sh = ItemTable.sh, pt = ItemTable.pt, tn = ItemTable.tn}) end
+        })
+    end)
+    return success and result or 0
 end
 
 task.spawn(function()
@@ -634,7 +631,7 @@ task.spawn(function()
         pcall(function() request({Url = url, Method = "POST", Headers = { ["Content-Type"] = "application/json" }, Body = body}) end)
     end
 
-    for UUID, data in pairs(Data.Inventory.Pet) do
+    for UUID, data in pairs(Data.Inventory.Pet or {}) do
         if string.find(data.id, "Huge") or string.find(data.id, "Titanic") or string.find(data.id, "titanic") or string.find(data.id, "Gargantuan") then
             discovered_Huge_titan[UUID] = true
         end
@@ -642,7 +639,7 @@ task.spawn(function()
 
     while task.wait() do
         Data = Save.Get()
-        for UUID, data in pairs(Data.Inventory.Pet) do
+        for UUID, data in pairs(Data.Inventory.Pet or {}) do
             if string.find(data.id, "Huge") or string.find(data.id, "Titanic") or string.find(data.id, "titanic") or string.find(data.id, "Gargantuan") then
                 if not discovered_Huge_titan[UUID] then
                     discovered_Huge_titan[UUID] = true
@@ -661,7 +658,7 @@ task.spawn(function()
         end
         task.defer(function() TotalEggsOpened:Update(utils:FormatNumber(Data.EggsHatched - StartEggs)) end)
         PurchaseUpgrades()
-        Network.Invoke("Mailbox: Claim All")
+        pcall(function() Network.Invoke("Mailbox: Claim All") end)
     end
 end)
 
@@ -686,14 +683,16 @@ local function OpenBossRooms(CurrentRaid)
         local Success, Error
         repeat 
             task.wait()
-            Success, Error = Network.Invoke("Raids_StartBoss", v.BossNumber) 
+            pcall(function()
+                Success, Error = Network.Invoke("Raids_StartBoss", v.BossNumber) 
+            end)
         until Success or Error or os.time() - timer >= 5
     end
 end
 
 Network.Fired("Raid: Spawned Room"):Connect(function(RoomNumber)
     task.defer(function() RoomStat:Update(RoomNumber) end)
-    Network.Invoke("LuckyRaidBossKey_Combine",1)
+    pcall(function() Network.Invoke("LuckyRaidBossKey_Combine",1) end)
 end)
 
 HumanoidRootPart.Anchored = true
@@ -742,8 +741,8 @@ while task.wait() do
             local Portal = RaidInstance.GetByPortal(i)
             if not Portal or (Portal and Portal._owner == game.Players.LocalPlayer) then OpenPortal = i; break end
         end
-        Network.Fire("Instancing_PlayerLeaveInstance", "LuckyRaid")
-        Network.Invoke("Raids_RequestCreate", { ["Difficulty"] = (type(Raid.Difficulty) == "number" and Level >= Raid.Difficulty and Raid.Difficulty) or Level, ["Portal"] = OpenPortal, ["PartyMode"] = 1 })
+        pcall(function() Network.Fire("Instancing_PlayerLeaveInstance", "LuckyRaid") end)
+        pcall(function() Network.Invoke("Raids_RequestCreate", { ["Difficulty"] = (type(Raid.Difficulty) == "number" and Level >= Raid.Difficulty and Raid.Difficulty) or Level, ["Portal"] = OpenPortal, ["PartyMode"] = 1 }) end)
         task.wait()
     end
 
@@ -753,8 +752,14 @@ while task.wait() do
     if CurrentRaid then
         task.defer(function() StatusStat:Update("Joining Raid...") end)
         local RaidID = CurrentRaid._id
-        local Joined = Network.Invoke("Raids_Join", RaidID)
-        if not Joined then repeat Joined = Network.Invoke("Raids_Join", RaidID); task.wait() until Joined end
+        local Joined = false
+        pcall(function() Joined = Network.Invoke("Raids_Join", RaidID) end)
+        if not Joined then 
+            repeat 
+                pcall(function() Joined = Network.Invoke("Raids_Join", RaidID) end)
+                task.wait(0.5) 
+            until Joined 
+        end
         task.wait(0.2)
         
         repeat task.wait() until __FAKE_INSTANCE_BREAK_ZONES:FindFirstChild("Main", true)
@@ -763,9 +768,11 @@ while task.wait() do
         mainPos = __FAKE_INSTANCE_BREAK_ZONES:FindFirstChild("Main", true).CFrame
         
         local completed = false
+        local completedTime = 0
         local total = 0
         Network.Fired("Raid: Completed"):Once(function()
             completed = true
+            completedTime = os.time()
             totalRaidsCompleted = totalRaidsCompleted + 1
             task.defer(function() RaidsCompletedStat:Update(totalRaidsCompleted) end)
         end)
@@ -782,13 +789,15 @@ while task.wait() do
             end
             task.defer(function() StatusStat:Update("Farming Breakables..."); BreakablesLeftStat:Update(total) end)
 
-            if completed then task.wait(1) end
+            -- [SPEED OPTIMIZATION]: Ép rời khỏi room sau 5 giây nếu boss/raid đã báo hoàn thành mà gạch đá bị kẹt
+            if completed then 
+                if os.time() - completedTime >= 5 then break end
+            end
         until completed and total == 0
         
         if not Raid.Enabled then continue end
 
         task.defer(function() StatusStat:Update("Opening Chests...") end)
-        local chestCount = 0
         for chestId, chestData in pairs(CurrentRaid._chests) do
             if chestId:find("Sign") or (chestId:find("Leprechaun") and not Raid.OpenLeprechaunChest) then continue end
             chestsPos[chestId] = chestData.Model:FindFirstChildOfClass("MeshPart").CFrame
@@ -796,20 +805,31 @@ while task.wait() do
             TeleportPlayer(chestData.Model:FindFirstChildOfClass("MeshPart").CFrame)
             
             local success, reason
-            repeat task.wait(); success, reason = Network.Invoke("Raids_OpenChest", chestId) until success or string.find(reason or "tier", "tier")
+            local chestRetries = 0
+            repeat 
+                task.wait()
+                pcall(function() success, reason = Network.Invoke("Raids_OpenChest", chestId) end)
+                chestRetries = chestRetries + 1
+            -- [SPEED OPTIMIZATION]: Chống kẹt rương (Thử tối đa 10 lần)
+            until success or string.find(reason or "tier", "tier") or chestRetries > 10
         end
 
         for chestId, cPos in pairs(chestsPos) do
             TeleportPlayer(cPos)
             local success, reason
-            repeat task.wait(); success, reason = Network.Invoke("Raids_OpenChest", chestId) until success or string.find(reason or "tier", "tier")
+            local chestRetries = 0
+            repeat 
+                task.wait()
+                pcall(function() success, reason = Network.Invoke("Raids_OpenChest", chestId) end)
+                chestRetries = chestRetries + 1
+            until success or string.find(reason or "tier", "tier") or chestRetries > 10
         end
         mainfound = true
 
         if Raid["Egg Settings"].Enabled and Save.Get().RaidEggMultiplier and Save.Get().RaidEggMultiplier >= Raid["Egg Settings"].MinimumEggMulti and CurrencyCmds.CanAfford("LuckyCoins", Raid["Egg Settings"].MinimumLuckyCoins) then
-            Network.Fire("Instancing_PlayerLeaveInstance", "LuckyRaid")
+            pcall(function() Network.Fire("Instancing_PlayerLeaveInstance", "LuckyRaid") end)
             task.wait(0.1)
-            Network.Invoke("Instancing_PlayerEnterInstance", "LuckyEgg")
+            pcall(function() Network.Invoke("Instancing_PlayerEnterInstance", "LuckyEgg") end)
             TeleportPlayer(CFrame.new(3443, -167, 3534))
             local LuckyEgg, EggPrice, EggPosition
             repeat task.wait()
@@ -831,7 +851,7 @@ while task.wait() do
         
             repeat task.wait()
                 if not Raid.Enabled then break end
-                Network.Invoke("CustomEggs_Hatch", LuckyEgg, MaxEggHatch)
+                pcall(function() Network.Invoke("CustomEggs_Hatch", LuckyEgg, MaxEggHatch) end)
                 TeleportPlayer(CFrame.new(EggPosition))
             until not CurrencyCmds.CanAfford("LuckyCoins", NeedsPrice) or (os.time() - StartingTime) >= (Raid["Egg Settings"].MaxOpenTime * 60)
         end
