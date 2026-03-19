@@ -167,7 +167,7 @@ function FarmUI:Format(Int)
 end
 
 --====================================================================--
--- TẠO GIAO DIỆN VỚI ĐẦY ĐỦ THÔNG SỐ NHƯ BỨC ẢNH
+-- TẠO GIAO DIỆN VỚI ĐẦY ĐỦ THÔNG SỐ
 local UI = FarmUI.new({
     UI = {
         ["Title"]           = {1, "🌟 AUTO LUCKY RAID", {0.8, 0, 0.08, 0}},
@@ -436,6 +436,32 @@ end
 updateEuids()
 
 task.spawn(function()
+    local targetStack = 20
+    local function ManageFruits()
+        local fruitInv = Save.Get().Inventory.Fruit
+        if not fruitInv then return end
+        local fruitUids = {}
+        for uid, data in pairs(fruitInv) do
+            if data.id and data.id ~= "Candycane" then
+                if not fruitUids[data.id] or (data._am and data._am > (fruitInv[fruitUids[data.id]]._am or 1)) then fruitUids[data.id] = uid end
+            end
+        end
+        local activeFruits = FruitCmds.GetActiveFruits()
+        for fruitName, uid in pairs(fruitUids) do
+            local activeData = activeFruits[fruitName]
+            local currentStack = activeData and #activeData or 0
+            if currentStack < targetStack then
+                pcall(function() Network.Invoke("Fruits: Consume", uid, targetStack - currentStack) end)
+                task.wait(0.15)
+            end
+        end
+    end
+    ManageFruits()
+    Network.Fired("Fruits: Update"):Connect(function() task.wait(1); ManageFruits() end)
+end)
+
+-- TỐI ƯU TỐC ĐỘ NÉM THÚ CƯNG & AUTO CLICK TAY
+task.spawn(function()
     local breakableOffset = 0
     while true do
         task.wait()
@@ -471,7 +497,14 @@ task.spawn(function()
             end
 
             if next(bulkAssignments) then
+                -- Lệnh gọi Thú cưng lao vào đánh
                 task.spawn(function() pcall(function() Network.Fire("Breakables_JoinPetBulk", bulkAssignments) end) end)
+                
+                -- [TÍNH NĂNG MỚI]: Lệnh giả lập Click tay (Tap) thẳng vào mục tiêu với tốc độ ánh sáng
+                pcall(function()
+                    Network.UnreliableFire("Breakables_PlayerDealDamage", tostring(availableBreakables[1]))
+                end)
+                
                 task.wait(0.1) 
             end
             breakableOffset = breakableOffset + 1
@@ -481,6 +514,7 @@ task.spawn(function()
     end
 end)
 
+-- WEBHOOK CƠ BẢN
 task.spawn(function()
     local Data = Save.Get()
     local StartEggs = Data.EggsHatched or 0
@@ -584,31 +618,6 @@ end)
 
 HumanoidRootPart.Anchored = true
 EnterInstance("LuckyEventWorld")
-
-task.spawn(function()
-    local targetStack = 20
-    local function ManageFruits()
-        local fruitInv = Save.Get().Inventory.Fruit
-        if not fruitInv then return end
-        local fruitUids = {}
-        for uid, data in pairs(fruitInv) do
-            if data.id and data.id ~= "Candycane" then
-                if not fruitUids[data.id] or (data._am and data._am > (fruitInv[fruitUids[data.id]]._am or 1)) then fruitUids[data.id] = uid end
-            end
-        end
-        local activeFruits = FruitCmds.GetActiveFruits()
-        for fruitName, uid in pairs(fruitUids) do
-            local activeData = activeFruits[fruitName]
-            local currentStack = activeData and #activeData or 0
-            if currentStack < targetStack then
-                pcall(function() Network.Invoke("Fruits: Consume", uid, targetStack - currentStack) end)
-                task.wait(0.15)
-            end
-        end
-    end
-    ManageFruits()
-    Network.Fired("Fruits: Update"):Connect(function() task.wait(1); ManageFruits() end)
-end)
 
 if Raid.Enabled then
     while task.wait() do
