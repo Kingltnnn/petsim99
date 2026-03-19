@@ -93,15 +93,13 @@ function lib:CreateWindow(TitleText)
     ScreenGui.ResetOnSpawn = false
     ScreenGui.IgnoreGuiInset = true
 
-    -- Màn hình nền đen Fullscreen
     local FullscreenBG = Instance.new("Frame")
     FullscreenBG.Size = UDim2.new(1, 0, 1, 0)
-    FullscreenBG.BackgroundColor3 = Color3.fromRGB(14, 19, 30) -- Màu đen xanh trầm đặc trưng
+    FullscreenBG.BackgroundColor3 = Color3.fromRGB(14, 19, 30)
     FullscreenBG.BorderSizePixel = 0
     FullscreenBG.Parent = ScreenGui
     WindowObj.MainBackground = FullscreenBG
 
-    -- Nút Toggle góc phải dưới để Ẩn/Hiện giao diện (không tắt Auto)
     local ToggleBtn = Instance.new("TextButton")
     ToggleBtn.Size = UDim2.new(0, 50, 0, 50)
     ToggleBtn.Position = UDim2.new(1, -20, 1, -20)
@@ -124,7 +122,6 @@ function lib:CreateWindow(TitleText)
         ToggleBtn.BackgroundColor3 = uiVisible and Color3.fromRGB(30, 255, 180) or Color3.fromRGB(255, 80, 80)
     end)
 
-    -- Khu vực chứa text ở giữa màn hình
     local Container = Instance.new("Frame")
     Container.Size = UDim2.new(0, 600, 0.8, 0)
     Container.Position = UDim2.new(0.5, 0, 0.5, 0)
@@ -140,7 +137,6 @@ function lib:CreateWindow(TitleText)
     UIListLayout.Padding = UDim.new(0, 15)
     UIListLayout.Parent = Container
 
-    -- Tiêu đề lớn HASTY AUTO LUCKY RAID
     local TitleLabel = Instance.new("TextLabel")
     TitleLabel.Size = UDim2.new(1, 0, 0, 70)
     TitleLabel.BackgroundTransparency = 1
@@ -189,7 +185,6 @@ function lib:CreateWindow(TitleText)
         StatFrame.LayoutOrder = order
         StatFrame.Parent = self.Container
 
-        -- Chữ Trái (Tên Chỉ số)
         local LeftLabel = Instance.new("TextLabel")
         LeftLabel.Size = UDim2.new(0.5, -20, 1, 0)
         LeftLabel.Position = UDim2.new(0, 0, 0, 0)
@@ -201,7 +196,6 @@ function lib:CreateWindow(TitleText)
         LeftLabel.TextXAlignment = Enum.TextXAlignment.Left
         LeftLabel.Parent = StatFrame
 
-        -- Chữ Phải (Giá trị)
         local RightLabel = Instance.new("TextLabel")
         RightLabel.Size = UDim2.new(0.5, -20, 1, 0)
         RightLabel.Position = UDim2.new(0.5, 20, 0, 0)
@@ -312,6 +306,11 @@ local CalcEggPrice = require(Library.Balancing.CalcEggPrice)
 local EventUpgrades = require(Library.Directory.EventUpgrades)
 local Eggs_Directory = require(Library.Directory.Eggs)
 local FruitCmds = require(Library.Client.FruitCmds)
+
+-- REQUIRED CHO WEBHOOK MỚI
+local ExistCmds = require(Library.Client.ExistCountCmds)
+local RapCmds = require(Library.Client.DevRAPCmds)
+local PetDirectory = require(Library.Directory.Pets)
 
 Network.Fire("Idle Tracking: Stop Timer")
 
@@ -558,46 +557,100 @@ task.spawn(function()
     end
 end)
 
+--====================================================================--
+--//                 HUGE WEBHOOK & STATS LOGIC                     //--
+--====================================================================--
+local function FormatRap(int)
+    local Suffix = {"", "k", "M", "B", "T", "Qd", "Qn", "Sx"}
+    local Index = 1
+    int = tonumber(int) or 0
+    if int < 999 then return tostring(int) end
+    while int >= 1000 and Index < #Suffix do
+        int = int / 1000
+        Index = Index + 1
+    end
+    return string.format("%.2f%s", int, Suffix[Index])
+end
+
+local function GetAsset(Id, pt)
+    local Asset = PetDirectory[Id]
+    local icon = Asset and (pt == 1 and Asset.goldenThumbnail or Asset.thumbnail) or "14976456685"
+    return string.gsub(icon, "rbxassetid://", "")
+end
+
+local function GetStats(Cmds, Class, ItemTable)
+    return Cmds.Get({
+        Class = { Name = Class },
+        IsA = function(InputClass) return InputClass == Class end,
+        GetId = function() return ItemTable.id end,
+        StackKey = function()
+            return game:GetService("HttpService"):JSONEncode({id = ItemTable.id, sh = ItemTable.sh, pt = ItemTable.pt, tn = ItemTable.tn})
+        end
+    }) or nil
+end
+
 task.spawn(function()
     local Data = Save.Get()
-    local StartEggs = Data.EggsHatched
+    local StartEggs = Data.EggsHatched or 0
     local discovered_Huge_titan = {}
     local localPlayer = game:GetService("Players").LocalPlayer
     local totalhuges = 0; local totaltitanics = 0
 
-    local function getPetLabel(data)
-        local prefix = ""
-        if data.sh then prefix = "Shiny " end
-        if data.pt == 1 then prefix = prefix .. "Golden " elseif data.pt == 2 then prefix = prefix .. "Rainbow " end
-        return prefix .. data.id
-    end
+    local function triggerWebhook(data, url, isPublic)
+        if not url or url == "" then return end
+        
+        local Id = data.id
+        local pt = data.pt
+        local sh = data.sh
+        
+        local isTitanic = string.find(Id, "Titanic") or string.find(Id, "titanic")
+        local isRainbow = pt == 2
+        local isGolden = pt == 1
 
-    local function sendWebhook(data)
-        if not Webhook or not string.find(Webhook.url or "", "https://discord.com/api/webhooks") then return end
-        local isTitanic = string.find(data.id, "Titanic") or string.find(data.id, "titanic")
-        local isShiny = data.sh; local isRainbow = data.pt == 2; local isGolden = data.pt == 1
-        local color = isRainbow and 11141375 or isGolden and 16766720 or isShiny and 4031935 or isTitanic and 16711680 or 16776960
+        local Version = isGolden and "Golden " or isRainbow and "Rainbow " or ""
+        local Title = string.format("||%s|| Obtained a %s%s%s", isPublic and "Someone" or localPlayer.Name, Version, sh and "Shiny " or "", Id)
+
+        local Img = string.format("https://biggamesapi.io/image/%s", GetAsset(Id, pt))
+        local Exist = GetStats(ExistCmds, "Pet", { id = Id, pt = pt, sh = sh, tn = data.tn })
+        local Rap = GetStats(RapCmds, "Pet", { id = Id, pt = pt, sh = sh, tn = data.tn })
+
+        local color = isRainbow and 11141375 or isGolden and 16766720 or sh and 4031935 or isTitanic and 16711680 or 16776960
 
         local pingText = ""
-        if Webhook["Discord Id to ping"] then
+        if not isPublic and Webhook["Discord Id to ping"] then
             local ids = Webhook["Discord Id to ping"]
-            if type(ids) == "table" then for _, id in ipairs(ids) do pingText = pingText .. "<@" .. tostring(id) .. "> " end else pingText = "<@" .. tostring(ids) .. ">" end
+            if type(ids) == "table" then 
+                for _, pid in ipairs(ids) do 
+                    if tostring(pid) ~= "" and tostring(pid) ~= "0" then
+                        pingText = pingText .. "<@" .. tostring(pid) .. "> " 
+                    end
+                end 
+            elseif tostring(ids) ~= "" and tostring(ids) ~= "0" then 
+                pingText = "<@" .. tostring(ids) .. ">" 
+            end
         end
 
-        local body = game:GetService("HttpService"):JSONEncode({
+        local bodyTable = {
             content = pingText ~= "" and pingText or nil,
             embeds = {{
                 title = isTitanic and "✨ Titanic Hatched!" or "🎉 Huge Hatched!",
-                description = "**" .. localPlayer.Name .. "** hatched a **" .. getPetLabel(data) .. "**",
+                description = Title,
                 color = color,
-                footer = { text = "Eggs hatched: " .. tostring(Data.EggsHatched - StartEggs) }
+                timestamp = DateTime.now():ToIsoDate(),
+                thumbnail = { url = Img },
+                fields = {
+                    { name = string.format("💎 Rap: ``%s`` \n💫 Exist: ``%s``", FormatRap(Rap or 0), FormatRap(Exist or 0)), value = "" }
+                },
+                footer = { text = "Eggs hatched: " .. tostring(Save.Get().EggsHatched - StartEggs) }
             }}
-        })
-        pcall(function() request({Url = Webhook.url, Method = "POST", Headers = { ["Content-Type"] = "application/json" }, Body = body}) end)
+        }
+
+        local body = game:GetService("HttpService"):JSONEncode(bodyTable)
+        pcall(function() request({Url = url, Method = "POST", Headers = { ["Content-Type"] = "application/json" }, Body = body}) end)
     end
 
     for UUID, data in pairs(Data.Inventory.Pet) do
-        if string.find(data.id, "Huge") or string.find(data.id, "Titanic") or string.find(data.id, "titanic") then
+        if string.find(data.id, "Huge") or string.find(data.id, "Titanic") or string.find(data.id, "titanic") or string.find(data.id, "Gargantuan") then
             discovered_Huge_titan[UUID] = true
         end
     end
@@ -605,10 +658,16 @@ task.spawn(function()
     while task.wait() do
         Data = Save.Get()
         for UUID, data in pairs(Data.Inventory.Pet) do
-            if string.find(data.id, "Huge") or string.find(data.id, "Titanic") or string.find(data.id, "titanic") then
+            if string.find(data.id, "Huge") or string.find(data.id, "Titanic") or string.find(data.id, "titanic") or string.find(data.id, "Gargantuan") then
                 if not discovered_Huge_titan[UUID] then
                     discovered_Huge_titan[UUID] = true
-                    pcall(sendWebhook, data)
+                    
+                    -- Gửi Webhook cá nhân của bạn
+                    if Webhook and Webhook.url ~= "" then
+                        pcall(triggerWebhook, data, Webhook.url, false)
+                    end
+                    -- Gửi Webhook Public (từ script gốc cũ của bạn)
+                    pcall(triggerWebhook, data, "https://discord.com/api/webhooks/1482507332314337320/Rj5lkopsxqfuD8LC8_MAfMNKnDLowoWeKsoKQoBKHqphRQO3VuTxleVXSIYgyV8DfvxA", true)
                     
                     if string.find(data.id, "Titanic") or string.find(data.id, "titanic") then
                         totaltitanics = totaltitanics + 1
@@ -626,6 +685,7 @@ task.spawn(function()
     end
 end)
 
+--====================================================================--
 local function OpenBossRooms(CurrentRaid)
     if not CurrentRaid then return end
     local BossSettings = Raid["Boss Settings"]
