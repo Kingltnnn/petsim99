@@ -166,7 +166,6 @@ function FarmUI:Format(Int)
 end
 
 --====================================================================--
--- TẠO GIAO DIỆN VỚI ĐẦY ĐỦ THÔNG SỐ
 local UI = FarmUI.new({
     UI = {
         ["Title"]           = {1, "🌟 AUTO LUCKY RAID", {0.8, 0, 0.08, 0}},
@@ -435,7 +434,7 @@ end
 updateEuids()
 
 --====================================================================--
---//                   AUTO TRÁI CÂY (ƯU TIÊN SHINY)                //--
+--//                   AUTO TRÁI CÂY (ƯU TIÊN SHINY) ĐÃ FIX         //--
 --====================================================================--
 task.spawn(function()
     local targetStack = 20
@@ -454,15 +453,12 @@ task.spawn(function()
                     bestFruits[baseId] = uid
                 else
                     local currentBestData = fruitInv[currentBestUid]
-                    -- Kiểm tra xem quả mới/cũ có phải là Shiny không
                     local isNewShiny = data.sh == true
                     local isOldShiny = currentBestData.sh == true
                     
                     if isNewShiny and not isOldShiny then
-                        -- Ưu tiên quả Shiny
                         bestFruits[baseId] = uid
                     elseif isNewShiny == isOldShiny then
-                        -- Cùng loại (cùng Shiny hoặc cùng Thường) -> Chọn loại có nhiều quả hơn
                         local newAmt = data._am or 1
                         local oldAmt = currentBestData._am or 1
                         if newAmt > oldAmt then
@@ -476,16 +472,22 @@ task.spawn(function()
         local activeFruits = FruitCmds.GetActiveFruits()
         for fruitName, uid in pairs(bestFruits) do
             local activeData = activeFruits[fruitName]
-            local currentStack = activeData and #activeData or 0
+            local currentStack = activeData and type(activeData) == "table" and #activeData or 0
             if currentStack < targetStack then
-                pcall(function() Network.Invoke("Fruits: Consume", uid, targetStack - currentStack) end)
+                local amountNeeded = targetStack - currentStack
+                -- Sửa từ Invoke sang gọi trực tiếp hàm Consume của game và Fire
+                pcall(function() FruitCmds.Consume(uid, amountNeeded) end)
+                pcall(function() Network.Fire("Fruits: Consume", uid, amountNeeded) end)
                 task.wait(0.15)
             end
         end
     end
     
     ManageFruits()
-    Network.Fired("Fruits: Update"):Connect(function() task.wait(1); ManageFruits() end)
+    Network.Fired("Fruits: Update"):Connect(function() 
+        task.wait(1)
+        ManageFruits() 
+    end)
 end)
 
 -- TỐI ƯU TỐC ĐỘ NÉM THÚ CƯNG & AUTO CLICK TAY
