@@ -9,6 +9,7 @@ local defaultConfig = {
     },
     ["Webhook"] = { url = "", ["Discord Id to ping"] = {""} },
     ["UpgradeSettings"] = {
+		Enabled = true,
         LuckyRaidXP                 = { priority = 1, priority_upgrade = 13, maxTier = 17, required = true },
         LuckyRaidDamage             = { priority = 2, priority_upgrade = 15, maxTier = 17, required = true },
         LuckyRaidAttackSpeed        = { priority = 3, priority_upgrade = 7,  maxTier = 10, required = true },
