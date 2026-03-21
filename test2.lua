@@ -282,8 +282,10 @@ local function EnterInstance(Name)
         retries = retries + 1
     end
 end
-
-task.spawn(function() pcall(function() Network.Invoke("LuckyRaidUpgrades_Reset") end) end)
+-- CHỈ TỰ ĐỘNG RESET ORB NẾU CÔNG TẮC ENABLED = TRUE
+if Settings["UpgradeSettings"] and Settings["UpgradeSettings"].Enabled then
+    task.spawn(function() pcall(function() Network.Invoke("LuckyRaidUpgrades_Reset") end) end)
+end
 
 local luckyUpgrades = {}
 for upgradeId, data in next, EventUpgrades do
@@ -293,12 +295,13 @@ local orbItem = Items.Misc("Lucky Raid Orb V2")
 
 local function PurchaseUpgrades()
     local Config = Settings["UpgradeSettings"]
-    if not Config then return nil end
+    -- KIỂM TRA CÔNG TẮC: Nếu tắt (false) thì bỏ qua không làm gì cả
+    if not Config or Config.Enabled == false then return nil end 
 
     local currentOrbs = orbItem:CountExact()
     local allRequiredDone = true
     for id, cfg in pairs(Config) do
-        if cfg.enabled ~= false and cfg.required then
+        if type(cfg) == "table" and cfg.enabled ~= false and cfg.required then
             local currentTier = EventUpgradeCmds.GetTier(id)
             if currentTier < (cfg.priority_upgrade or 1) then
                 allRequiredDone = false; break
@@ -308,7 +311,7 @@ local function PurchaseUpgrades()
 
     local bestUpgrade = nil; local bestPriority = math.huge; local bestCost = math.huge
     for id, cfg in pairs(Config) do
-        if cfg.enabled == false then continue end
+        if type(cfg) ~= "table" or cfg.enabled == false then continue end
         local currentTier = EventUpgradeCmds.GetTier(id)
         local maxTier = cfg.maxTier or 99
         local priority = cfg.priority or 99
