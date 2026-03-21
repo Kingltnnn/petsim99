@@ -438,16 +438,16 @@ end
 updateEuids()
 
 --====================================================================--
---//                   AUTO TRÁI CÂY (ƯU TIÊN SHINY) ĐÃ FIX         //--
+--//        AUTO TRÁI CÂY (CHỈ ĂN 1 QUẢ KHI HẾT TÁC DỤNG)           //--
 --====================================================================--
 task.spawn(function()
-    local targetStack = 20
     local function ManageFruits()
         local fruitInv = Save.Get().Inventory.Fruit
         if not fruitInv then return end
         
         local bestFruits = {}
         
+        -- Lọc tìm trái cây tốt nhất (Ưu tiên Shiny, số lượng nhiều)
         for uid, data in pairs(fruitInv) do
             if data.id and data.id ~= "Candycane" then
                 local baseId = data.id
@@ -473,21 +473,25 @@ task.spawn(function()
             end
         end
         
+        -- Kiểm tra buff hiện tại và CHỈ ăn 1 quả khi đã hết sạch tác dụng
         local activeFruits = FruitCmds.GetActiveFruits()
         for fruitName, uid in pairs(bestFruits) do
             local activeData = activeFruits[fruitName]
             local currentStack = activeData and type(activeData) == "table" and #activeData or 0
-            if currentStack < targetStack then
-                local amountNeeded = targetStack - currentStack
-                -- Sửa từ Invoke sang gọi trực tiếp hàm Consume của game và Fire
-                pcall(function() FruitCmds.Consume(uid, amountNeeded) end)
-                pcall(function() Network.Fire("Fruits: Consume", uid, amountNeeded) end)
+            
+            -- Nếu số lượng stack trái cây = 0 (tức là hết tác dụng), mới ăn đúng 1 quả
+            if currentStack < 1 then
+                pcall(function() FruitCmds.Consume(uid, 1) end)
+                pcall(function() Network.Fire("Fruits: Consume", uid, 1) end)
                 task.wait(0.15)
             end
         end
     end
     
+    -- Chạy lần đầu khi load script
     ManageFruits()
+    
+    -- Lắng nghe mỗi khi có cập nhật buff trái cây
     Network.Fired("Fruits: Update"):Connect(function() 
         task.wait(1)
         ManageFruits() 
